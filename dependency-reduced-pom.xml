@@ -83,7 +83,7 @@
     </dependency>
   </dependencies>
   <properties>
-    <mainClass>com.mykolabs.screener.MainAppFX</mainClass>
+    <mainClass>com.mykolabs.screener.presentation.MainAppFX</mainClass>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 </project>

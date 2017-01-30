@@ -15,7 +15,7 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane id="AnchorPane" prefHeight="600.0" prefWidth="600.0" styleClass="background" stylesheets="@../styles/Styles.css" xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mykolabs.screener.controllers.screenerFXMLController">
+<AnchorPane id="AnchorPane" prefHeight="600.0" prefWidth="600.0" styleClass="background" stylesheets="@../styles/Styles.css" xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mykolabs.screener.controllers.ScreenerFXMLController">
    <children>
       <HBox alignment="CENTER" AnchorPane.bottomAnchor="550.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
@@ -53,7 +53,7 @@
                   <Insets left="60.0" />
                </GridPane.margin>
             </Label>
-            <ChoiceBox prefWidth="200.0" GridPane.columnIndex="1">
+            <ChoiceBox fx:id="domainChoiceList" prefWidth="200.0" GridPane.columnIndex="1">
                <GridPane.margin>
                   <Insets right="40.0" />
                </GridPane.margin>
@@ -84,7 +84,7 @@
                   <Insets right="40.0" />
                </GridPane.margin>
             </TextField>
-            <Button mnemonicParsing="false" onAction="#retrieveAllPages" prefHeight="15.0" prefWidth="100.0" text="Get Pages" GridPane.columnIndex="1" GridPane.rowIndex="3">
+            <Button fx:id="getPagesButton" mnemonicParsing="false" onAction="#retrieveAllPages" prefHeight="15.0" prefWidth="100.0" text="Get Pages" GridPane.columnIndex="1" GridPane.rowIndex="3">
                <font>
                   <Font size="14.0" />
                </font>
@@ -177,7 +177,7 @@
                   </RadioButton>
                </children>
             </GridPane>
-            <Button mnemonicParsing="false" onAction="#takeScreenshots" text="Start Screening" GridPane.columnIndex="1" GridPane.rowIndex="6">
+            <Button fx:id="startScreeningButton" mnemonicParsing="false" onAction="#takeScreenshots" text="Start Screening" GridPane.columnIndex="1" GridPane.rowIndex="6">
                <font>
                   <Font size="14.0" />
                </font>

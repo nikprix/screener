@@ -16,3 +16,4 @@ hs_err_pid*
 /src/main/resources/log4j2.xml
 /src/main/resources/project.properties
 /src/main/resources/MessagesBundle.properties
+/src/main/resources/domains.csv

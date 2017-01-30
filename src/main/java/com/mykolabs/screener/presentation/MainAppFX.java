@@ -1,5 +1,6 @@
 package com.mykolabs.screener.presentation;
 
+import com.mykolabs.screener.controllers.ScreenerFXMLController;
 import static javafx.application.Application.launch;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -15,7 +16,7 @@ import java.util.ResourceBundle;
 /**
  * This class starts JavaFX application.
  *
- * @author Mykola Prykhodko
+ * @author nikprix
  */
 public class MainAppFX extends Application {
 
@@ -26,14 +27,14 @@ public class MainAppFX extends Application {
     private Stage primaryStage;
 
     /**
-     * Constructor
+     * Default constructor.
      */
     public MainAppFX() {
         super();
     }
 
     /**
-     * The application starts here. 
+     * The application starts here.
      *
      * @param primaryStage
      * @throws Exception
@@ -41,12 +42,12 @@ public class MainAppFX extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
 
-        log.info("Program Begins");
+        log.info("Program loads here");
 
-        // The Stage comes from the framework so make a copy to use elsewhere
+        // The primaryStage comes from the framework so we need to have a reference to it
         this.primaryStage = primaryStage;
         // Create the Scene and put it on the Stage
-        configureStage();
+        loadMainScreenWindow();
 
         // Set the window title
         primaryStage.setTitle(ResourceBundle.getBundle("MessagesBundle").getString("title"));
@@ -55,24 +56,18 @@ public class MainAppFX extends Application {
     }
 
     /**
-     * Load the FXML and bundle, create a Scene and put the Scene on Stage.
+     * Loads Screener FXML layout. Creates the Scene and puts it on the Stage
      *
-     * Using this approach allows you to use loader.getController() to get a
-     * reference to the fxml's controller should you need to pass data to it.
-     * Not used in this archetype.
+     * Using this approach allows to use loader.getController() to get a
+     * reference to the fxml's controller should we need to pass data to it.
      */
-    private void configureStage() {
+    private void loadMainScreenWindow() {
+
         try {
             // Instantiate the FXMLLoader
             FXMLLoader loader = new FXMLLoader();
-
             // Set the location of the fxml file in the FXMLLoader
-            loader.setLocation(MainAppFX.class.getResource("/fxml/Scene.fxml"));
-
-            // Localize the loader with its bundle
-            // Uses the default locale and if a matching bundle is not found
-            // will then use MessagesBundle.properties
-            loader.setResources(ResourceBundle.getBundle("MessagesBundle"));
+            loader.setLocation(MainAppFX.class.getResource("/fxml/MainScreen.fxml"));
 
             // Parent is the base class for all nodes that have children in the
             // scene graph such as AnchorPane and most other containers
@@ -83,6 +78,10 @@ public class MainAppFX extends Application {
 
             // Put the Scene on Stage
             primaryStage.setScene(scene);
+
+            // Give the ScreenerFXMLController controller access to the main app.
+            ScreenerFXMLController controller = loader.getController();
+            controller.setMainAppFX(this);
 
         } catch (IOException ex) { // getting resources or files could fail
             log.error(null, ex);

@@ -6,7 +6,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane id="AnchorPane" prefHeight="200" prefWidth="320" stylesheets="@../styles/Styles.css" xmlns="http://javafx.com/javafx/8.0.40" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mykolabs.screener.controllers.advancedFXMLController">
+<AnchorPane id="AnchorPane" prefHeight="200" prefWidth="320" stylesheets="@../styles/Styles.css" xmlns="http://javafx.com/javafx/8.0.40" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mykolabs.screener.controllers.AdvancedFXMLController">
     <children>
         <Button fx:id="button" alignment="CENTER" contentDisplay="CENTER" layoutX="126.0" layoutY="71.0" minWidth="69.0" onAction="" prefHeight="29.0" prefWidth="69.0" text="%click" textAlignment="CENTER" />
         <Label fx:id="label" alignment="CENTER" contentDisplay="CENTER" layoutX="98.0" layoutY="122.0" minHeight="16.0" minWidth="125.0" />

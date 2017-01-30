@@ -15,6 +15,11 @@
 
 .text-field {
     -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: black;
+}
+
+.choice-box .label {
+     -fx-text-fill: black; 
 }
 
 /* 

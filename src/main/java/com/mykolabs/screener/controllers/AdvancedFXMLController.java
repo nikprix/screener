@@ -3,12 +3,12 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.mykolabs.screener.beans;
+package com.mykolabs.screener.controllers;
 
 /**
  *
  * @author nikprix
  */
-public class WebsiteData {
+public class AdvancedFXMLController {
     
 }
