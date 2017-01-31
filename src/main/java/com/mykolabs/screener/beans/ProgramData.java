@@ -91,12 +91,11 @@ public class ProgramData {
     /*
      Getters and Setters
      */
-    
-    public String getDomainURL(){
+    public String getDomainURL() {
         return domainURL.get();
     }
-    
-    public void setDomainURL(final String domainUrl){
+
+    public void setDomainURL(final String domainUrl) {
         this.domainURL.set(domainUrl);
     }
 
@@ -104,30 +103,38 @@ public class ProgramData {
         return domainURL;
     }
 
-    public String getCollectionId(){
+    public String getCollectionId() {
         return collectionId.get();
     }
-    
-    public void setCollectionId(final String collectionId){
+
+    public void setCollectionId(final String collectionId) {
         this.collectionId.set(collectionId);
     }
-    
+
     public StringProperty collectionId() {
         return collectionId;
     }
 
-    public StringProperty getPresentationId() {
+    public String getPresentationId() {
+        return presentationId.get();
+    }
+
+    public void setPresentationId(final String presentationId) {
+        this.presentationId.set(presentationId);
+    }
+
+    public StringProperty presentationId() {
         return presentationId;
     }
 
-        public String getSinglePageId(){
+    public String getSinglePageId() {
         return singlePageId.get();
     }
-    
-    public void setSinglePageId(final String singlePageId){
+
+    public void setSinglePageId(final String singlePageId) {
         this.singlePageId.set(singlePageId);
     }
-    
+
     public StringProperty singlePageId() {
         return singlePageId;
     }

@@ -1,6 +1,7 @@
 package com.mykolabs.screener.controllers;
 
 import com.mykolabs.screener.beans.Domains;
+import com.mykolabs.screener.beans.ProgramData;
 import com.mykolabs.screener.presentation.MainAppFX;
 import com.mykolabs.screener.util.DomainListLoader;
 import java.util.HashMap;
@@ -37,6 +38,8 @@ public class ScreenerFXMLController {
     // Reference to the main application.
     private MainAppFX mainApp;
 
+    ProgramData programDetails;
+
     // The @FXML annotation on a class variable results in the matching
     // reference being injected into the variable
     // label is defined in the fxml file
@@ -66,6 +69,16 @@ public class ScreenerFXMLController {
     private ResourceBundle resources;
 
     /**
+     * The constructor. The constructor is called before the initialize()
+     * method.
+     */
+    public ScreenerFXMLController() {
+        super();
+        // Create empty ProgramData object and initialize its fields later when required
+        programDetails = new ProgramData();
+    }
+
+    /**
      * This method is automatically called after the fxml file has been loaded.
      * Useful if a control must be dynamically configured such as loading data
      * into a table. In this code all it does is log that it has been called.
@@ -77,11 +90,15 @@ public class ScreenerFXMLController {
         // setting listener to GetPages button to enable it only if 
         // Domain is selected and collection / presentation ids are entered
         this.enableGetPagesButton();
+        // setting listener to StartScreening button to enable it only if 
+        // Domain / collection / presentation ids, one item from Pages
+        // and browser are populated/selected
+        this.enableStartScreeningButton();
 
         // populating domains choice list drop down with list of domains
         // from domains.csv file.
         domainChoiceList.getItems().addAll(DomainListLoader.getDomains());
-        
+
         // making pagesSelectList to accept multiple selection
         pagesSelectList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
@@ -126,20 +143,28 @@ public class ScreenerFXMLController {
     @FXML
     void retrieveAllPages(ActionEvent event) {
 
+        /* At first, initialize fields in ProgramData - programDetails object for later usage */
+        programDetails.setDomainURL(domainChoiceList
+                .getSelectionModel()
+                .selectedItemProperty()
+                .getValue()
+                .getUrl());
+        programDetails.setCollectionId(collectionIdField.getText());
+        programDetails.setPresentationId(presentationIdField.getText());
+
         // creating HttpRequestController object to perform GET request
         HttpRequestController request
                 = new HttpRequestController(
-                        domainChoiceList
-                        .getSelectionModel()
-                        .selectedItemProperty()
-                                .getValue()
-                                .getUrl(),
-                        collectionIdField.getText(),
-                        presentationIdField.getText());
+                        programDetails.getDomainURL(),
+                        programDetails.getCollectionId(),
+                        programDetails.getPresentationId());
+
+        // add ALL retrieved pages to ProgramData - programDetails object
+        programDetails.setProgramPagesIds(request.getPagesList());
 
         // populating ListView<String> pagesSelectList with ArrayList of pages,
         // retrieved from the request.
-        pagesSelectList.setItems(FXCollections.observableArrayList(request.getPagesList()));
+        pagesSelectList.setItems(FXCollections.observableArrayList(programDetails.getProgramPagesIds()));
     }
 
     @FXML
@@ -178,6 +203,23 @@ public class ScreenerFXMLController {
     }
 
     private void enableStartScreeningButton() {
+
+        // Binding 3 pages selection options
+        BooleanBinding booleanBindingOfPagesOptions
+                = singlePageIdField.textProperty().isEqualTo("").and(
+                pagesSelectList.getSelectionModel().selectedItemProperty().isNull()).and(
+                allPagesCheckBox.selectedProperty().not());
+
+        // setting Binding to the button for 2 text fields
+        // (collectionIdField / presentationIdField) / ChoiceBox
+        // & 'booleanBindingOfPagesOptions'
+        BooleanBinding booleanBinding
+                = collectionIdField.textProperty().isEqualTo("").or(
+                presentationIdField.textProperty().isEqualTo("")).or(
+                domainChoiceList.getSelectionModel().selectedItemProperty().isNull()).or(
+                        booleanBindingOfPagesOptions);
+
+        startScreeningButton.disableProperty().bind(booleanBinding);
 
     }
 
