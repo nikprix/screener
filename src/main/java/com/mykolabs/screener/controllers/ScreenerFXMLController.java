@@ -2,6 +2,7 @@ package com.mykolabs.screener.controllers;
 
 import com.mykolabs.screener.beans.Domains;
 import com.mykolabs.screener.beans.ProgramData;
+import com.mykolabs.screener.beans.SeleniumData;
 import com.mykolabs.screener.presentation.MainAppFX;
 import com.mykolabs.screener.util.DomainListLoader;
 import java.util.HashMap;
@@ -89,11 +90,11 @@ public class ScreenerFXMLController {
 
         // setting listener to GetPages button to enable it only if 
         // Domain is selected and collection / presentation ids are entered
-        this.enableGetPagesButton();
+        this.disableGetPagesButton();
         // setting listener to StartScreening button to enable it only if 
         // Domain / collection / presentation ids, one item from Pages
         // and browser are populated/selected
-        this.enableStartScreeningButton();
+        this.disableStartScreeningButton();
 
         // populating domains choice list drop down with list of domains
         // from domains.csv file.
@@ -123,11 +124,6 @@ public class ScreenerFXMLController {
     @FXML
     void chromeRadioSelected(ActionEvent event) {
 
-    }
-
-    @FXML
-    void exitProgram(ActionEvent event) {
-        Platform.exit();
     }
 
     @FXML
@@ -170,6 +166,17 @@ public class ScreenerFXMLController {
     @FXML
     void takeScreenshots(ActionEvent event) {
 
+        // vaidate that only one of 3 'Pages Selection Options was selected'
+        // create selenium data object
+        // invoke loading of the program's pages method
+        // create folder
+        // make screenshots
+        ScreenshotTaker screenshoter
+                = ScreenshotTaker.getInstance(new SeleniumData(""), programDetails);
+
+        // save them as .pdf
+        // combine screenshots in single pdf
+        // open folder or provide a button to open it
     }
 
     /**
@@ -183,10 +190,10 @@ public class ScreenerFXMLController {
     }
 
     /**
-     * Enables GetPagesButton only when there are values in 2 text fields and
+     * Disables GetPagesButton only when there are values in 2 text fields and
      * Domain is selected.
      */
-    private void enableGetPagesButton() {
+    private void disableGetPagesButton() {
         // setting Binding to the button for 2 text fields & ChoiceBox
         BooleanBinding booleanBinding
                 = collectionIdField.textProperty().isEqualTo("").or(
@@ -202,13 +209,17 @@ public class ScreenerFXMLController {
 //                        presentationIdField.textProperty().isEqualTo("")));
     }
 
-    private void enableStartScreeningButton() {
+    /**
+     * Disables StartScreeningButton until all required fields have values and
+     * items selected.
+     */
+    private void disableStartScreeningButton() {
 
         // Binding 3 pages selection options
         BooleanBinding booleanBindingOfPagesOptions
                 = singlePageIdField.textProperty().isEqualTo("").and(
                 pagesSelectList.getSelectionModel().selectedItemProperty().isNull()).and(
-                allPagesCheckBox.selectedProperty().not());
+                        allPagesCheckBox.selectedProperty().not());
 
         // setting Binding to the button for 2 text fields
         // (collectionIdField / presentationIdField) / ChoiceBox
@@ -219,8 +230,18 @@ public class ScreenerFXMLController {
                 domainChoiceList.getSelectionModel().selectedItemProperty().isNull()).or(
                         booleanBindingOfPagesOptions);
 
+        // disabling button until widgets above are empty or not selected
         startScreeningButton.disableProperty().bind(booleanBinding);
+    }
 
+    /**
+     * Exits program.
+     *
+     * @param event
+     */
+    @FXML
+    void exitProgram(ActionEvent event) {
+        Platform.exit();
     }
 
 }
