@@ -12,6 +12,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ResourceBundle;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.DialogPane;
+import javafx.stage.StageStyle;
 
 /**
  * This class starts JavaFX application.
@@ -87,6 +92,61 @@ public class MainAppFX extends Application {
             log.error(null, ex);
             System.exit(1);
         }
+    }
+
+    /**
+     * Loads alert on the screen with desired info.
+     *
+     * @param type
+     * @param message
+     * @param flagForValue
+     * @param value
+     */
+    public void getAlert(Alert.AlertType type, String message, int flagForValue, String value) {
+        Alert alert = new Alert(type, "", ButtonType.CLOSE);
+        // alert.initOwner(mainApp.getPrimaryStage());
+        // remove the icon and use only minimal window decorations.
+        alert.initStyle(StageStyle.UNDECORATED);
+        alert.setHeaderText(null);
+
+        if (flagForValue == 1) {
+            alert.setContentText(message + value);
+        } else if (flagForValue == 0) {
+            alert.setContentText(message);
+        }
+
+        // Adding inline CSS to the Alert pop up // http://stackoverflow.com/a/26811135
+        DialogPane dialogPane = alert.getDialogPane();
+
+        // root
+        if (type.equals(Alert.AlertType.WARNING)) {
+            dialogPane.setStyle("-fx-background-color: #C53E2F;");
+        } else {
+            dialogPane.setStyle("-fx-background-color: #edeef0;");
+        }
+
+        // 1. Grid
+        // remove style to customize header
+        if (type.equals(Alert.AlertType.INFORMATION)) {
+            dialogPane.getStyleClass().remove("alert");
+        }
+
+        // custom icon
+//        StackPane stackPane = new StackPane(new ImageView(new Image(getClass().getResourceAsStream("myicon.png"))));
+//        stackPane.setPrefSize(24, 24);
+//        stackPane.setAlignment(Pos.CENTER);
+//        dialogPane.setGraphic(stackPane);
+        // 2. ContentText with just a Label
+        dialogPane.lookup(".content.label").setStyle("-fx-font-size: 16px; "
+                + "-fx-font-weight: bold; ");
+
+        // 3- ButtonBar
+        ButtonBar buttonBar = (ButtonBar) alert.getDialogPane().lookup(".button-bar");
+        buttonBar.setStyle("-fx-font-size: 16px;"
+                + "-fx-background-color: #039ED3;");
+        buttonBar.getButtons().forEach(b -> b.setStyle("-fx-font-family: \"Segoe UI\", Helvetica, Arial, sans-serif;"));
+
+        alert.showAndWait();
     }
 
     /**

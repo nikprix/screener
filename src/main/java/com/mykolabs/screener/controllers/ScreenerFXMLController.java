@@ -15,6 +15,7 @@ import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
@@ -167,13 +168,23 @@ public class ScreenerFXMLController {
     void takeScreenshots(ActionEvent event) {
 
         // vaidate that only one of 3 'Pages Selection Options was selected'
-        // create selenium data object
-        // invoke loading of the program's pages method
-        // create folder
-        // make screenshots
+        if (multiplePagesOptionsSelected() == true) {
+            mainApp.getAlert(Alert.AlertType.WARNING, "Only one Pages Selection Option can be chosen!", 0, "");
+            return;
+        }
+        
+        // pick selected 'Pages Selection Option'
+        
+        // populate 'programDetails' object again with final details
+        
+        // create selenium data object based on the value of 'Pages Selection Option' 
+        // and selected browser
         ScreenshotTaker screenshoter
                 = ScreenshotTaker.getInstance(new SeleniumData(""), programDetails);
 
+        // invoke loading of the program's pages method
+        // create folder
+        // make screenshots
         // save them as .pdf
         // combine screenshots in single pdf
         // open folder or provide a button to open it
@@ -232,6 +243,30 @@ public class ScreenerFXMLController {
 
         // disabling button until widgets above are empty or not selected
         startScreeningButton.disableProperty().bind(booleanBinding);
+    }
+
+    /**
+     * Validates Pages Selection Options and returns true if multiple options
+     * are selected.
+     *
+     * @return
+     */
+    private boolean multiplePagesOptionsSelected() {
+
+        boolean selection = false;
+
+        // checking if at least 2 options selected and setting selection to true
+        if (allPagesCheckBox.isSelected() && !pagesSelectList.getSelectionModel().isEmpty()) {
+            selection = true;
+        }
+        if (allPagesCheckBox.isSelected() && !singlePageIdField.getText().isEmpty()) {
+            selection = true;
+        }
+        if (!singlePageIdField.getText().isEmpty() && !pagesSelectList.getSelectionModel().isEmpty()) {
+            selection = true;
+        }
+
+        return selection;
     }
 
     /**
