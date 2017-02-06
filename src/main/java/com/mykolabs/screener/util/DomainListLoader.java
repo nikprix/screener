@@ -36,7 +36,7 @@ public class DomainListLoader {
             // iterate through all lines of the domains.csv file
             while ((line = reader.readNext()) != null) {
 
-                domains.add(new Domains(line[0], line[1]));
+                domains.add(new Domains(line[0], line[1], line[2]));
 
             }
             return domains;

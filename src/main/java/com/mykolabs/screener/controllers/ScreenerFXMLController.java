@@ -5,11 +5,16 @@ import com.mykolabs.screener.beans.ProgramData;
 import com.mykolabs.screener.beans.SeleniumData;
 import com.mykolabs.screener.presentation.MainAppFX;
 import com.mykolabs.screener.util.DomainListLoader;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.ResourceBundle;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.Property;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -40,7 +45,9 @@ public class ScreenerFXMLController {
     // Reference to the main application.
     private MainAppFX mainApp;
 
-    ProgramData programDetails;
+    private ProgramData programDetails;
+
+    private BooleanProperty isPageIdsListHasValuesProperty;
 
     // The @FXML annotation on a class variable results in the matching
     // reference being injected into the variable
@@ -78,6 +85,8 @@ public class ScreenerFXMLController {
         super();
         // Create empty ProgramData object and initialize its fields later when required
         programDetails = new ProgramData();
+        // init isPageIdsListHasValuesProperty;
+        isPageIdsListHasValuesProperty = new SimpleBooleanProperty();
     }
 
     /**
@@ -88,6 +97,22 @@ public class ScreenerFXMLController {
     @FXML
     private void initialize() {
         log.info("Initializing of ScreenerFXMLController started");
+
+        // at the beginning, pages List is empty, so its property as well
+        isPageIdsListHasValuesProperty.set(false);
+
+        // need to set listener for singlePageIdField field and update
+        // isPageIdsListEmptyProperty to true if page id is entered   
+        singlePageIdField.textProperty().addListener((observable, oldValue, newValue)
+                -> {
+            if (!newValue.isEmpty()) {
+                // page Ids List will have at least one value
+                isPageIdsListHasValuesProperty.set(true);
+            } else if (newValue.isEmpty() && programDetails.getProgramPagesIds().isEmpty()) {
+                isPageIdsListHasValuesProperty.set(false);
+            }
+        }
+        );
 
         // setting listener to GetPages button to enable it only if 
         // Domain is selected and collection / presentation ids are entered
@@ -159,6 +184,12 @@ public class ScreenerFXMLController {
         // add ALL retrieved pages to ProgramData - programDetails object
         programDetails.setProgramPagesIds(request.getPagesList());
 
+        // if pagesList is not returned empty need to set isPageIdsListEmptyProperty value to true
+        // to avoid StartScreening button being activated if no pages returned
+        if (!programDetails.getProgramPagesIds().isEmpty()) {
+            isPageIdsListHasValuesProperty.set(true);
+        }
+
         // populating ListView<String> pagesSelectList with ArrayList of pages,
         // retrieved from the request.
         pagesSelectList.setItems(FXCollections.observableArrayList(programDetails.getProgramPagesIds()));
@@ -167,22 +198,29 @@ public class ScreenerFXMLController {
     @FXML
     void takeScreenshots(ActionEvent event) {
 
+        ScreenshotTaker screenshoter;
+
         // vaidate that only one of 3 'Pages Selection Options was selected'
         if (multiplePagesOptionsSelected() == true) {
             mainApp.getAlert(Alert.AlertType.WARNING, "Only one Pages Selection Option can be chosen!", 0, "");
             return;
         }
-        
-        // pick selected 'Pages Selection Option'
-        
-        // populate 'programDetails' object again with final details
-        
-        // create selenium data object based on the value of 'Pages Selection Option' 
-        // and selected browser
-        ScreenshotTaker screenshoter
-                = ScreenshotTaker.getInstance(new SeleniumData(""), programDetails);
+
+        // Re-populate 'programDetails' object again with final details
+        this.setProgramDetailsForScreenshots();
+
+        // get selected browser and instantiate Screenshoter:
+        if (fireFoxRadio.isSelected()) {
+            screenshoter
+                    = ScreenshotTaker.getInstance(new SeleniumData("firefox"), programDetails);
+        } else {
+            screenshoter
+                    = ScreenshotTaker.getInstance(new SeleniumData("chrome"), programDetails);
+        }
 
         // invoke loading of the program's pages method
+        screenshoter.takeScreenshots();
+
         // create folder
         // make screenshots
         // save them as .pdf
@@ -239,6 +277,7 @@ public class ScreenerFXMLController {
                 = collectionIdField.textProperty().isEqualTo("").or(
                 presentationIdField.textProperty().isEqualTo("")).or(
                 domainChoiceList.getSelectionModel().selectedItemProperty().isNull()).or(
+                        isPageIdsListHasValuesProperty.not()).or(
                         booleanBindingOfPagesOptions);
 
         // disabling button until widgets above are empty or not selected
@@ -267,6 +306,37 @@ public class ScreenerFXMLController {
         }
 
         return selection;
+    }
+
+    /**
+     * Re-populates programDetails object for starting taking screenshots.
+     */
+    public void setProgramDetailsForScreenshots() {
+        // Re-populate 'programDetails' object again with final details
+        programDetails.setDomainURL(domainChoiceList
+                .getSelectionModel()
+                .selectedItemProperty()
+                .getValue()
+                .getUrl());
+        programDetails.setDomainPath(domainChoiceList
+                .getSelectionModel()
+                .selectedItemProperty()
+                .getValue()
+                .getPath());
+        programDetails.setCollectionId(collectionIdField.getText());
+        programDetails.setPresentationId(presentationIdField.getText());
+
+        // pick selected 'Pages Selection Option'
+        if (allPagesCheckBox.isSelected()) {
+            // Do nothing since programDetails.getProgramPagesIds() already 
+            // has all page ids
+        } else if (!singlePageIdField.getText().isEmpty()) {
+            List<String> pages = new ArrayList<>();
+            pages.add(singlePageIdField.getText());
+            programDetails.setProgramPagesIds(pages);
+        } else if (!pagesSelectList.getSelectionModel().isEmpty()) {
+            programDetails.setProgramPagesIds(pagesSelectList.getSelectionModel().getSelectedItems());
+        }
     }
 
     /**

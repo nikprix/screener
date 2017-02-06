@@ -1,6 +1,7 @@
 package com.mykolabs.screener.beans;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -16,25 +17,29 @@ public class ProgramData {
     private StringProperty presentationId;
 
     private StringProperty singlePageId;
-    private ArrayList<String> programPagesIds;
+    private List<String> programPagesIds;
+    
+    private String domainPath;
 
     /**
      * Default constructor.
      */
     public ProgramData() {
-        this("", "", "", "", new ArrayList<>());
+        this("", "", "", "", "", new ArrayList<>());
     }
 
     /**
      * Non - Default constructor.
      *
+     * @param domainPath
      * @param domainURL
      * @param collectionId
      * @param presentationId
      * @param singlePageId
      * @param programPagesIds
      */
-    public ProgramData(String domainURL, String collectionId, String presentationId, String singlePageId, ArrayList<String> programPagesIds) {
+    public ProgramData(String domainPath, String domainURL, String collectionId, String presentationId, String singlePageId, ArrayList<String> programPagesIds) {
+        this.domainPath = domainPath;
         this.domainURL = new SimpleStringProperty(domainURL);
         this.collectionId = new SimpleStringProperty(collectionId);
         this.presentationId = new SimpleStringProperty(presentationId);
@@ -44,17 +49,18 @@ public class ProgramData {
 
     @Override
     public String toString() {
-        return "ProgramData{" + "domainURL=" + domainURL + ", collectionId=" + collectionId + ", presentationId=" + presentationId + ", singlePageId=" + singlePageId + ", programPagesIds=" + programPagesIds + '}';
+        return "ProgramData{" + "domainURL=" + domainURL + ", collectionId=" + collectionId + ", presentationId=" + presentationId + ", singlePageId=" + singlePageId + ", programPagesIds=" + programPagesIds + ", domainPath=" + domainPath + '}';
     }
 
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 83 * hash + Objects.hashCode(this.domainURL);
-        hash = 83 * hash + Objects.hashCode(this.collectionId);
-        hash = 83 * hash + Objects.hashCode(this.presentationId);
-        hash = 83 * hash + Objects.hashCode(this.singlePageId);
-        hash = 83 * hash + Objects.hashCode(this.programPagesIds);
+        hash = 79 * hash + Objects.hashCode(this.domainURL);
+        hash = 79 * hash + Objects.hashCode(this.collectionId);
+        hash = 79 * hash + Objects.hashCode(this.presentationId);
+        hash = 79 * hash + Objects.hashCode(this.singlePageId);
+        hash = 79 * hash + Objects.hashCode(this.programPagesIds);
+        hash = 79 * hash + Objects.hashCode(this.domainPath);
         return hash;
     }
 
@@ -70,6 +76,9 @@ public class ProgramData {
             return false;
         }
         final ProgramData other = (ProgramData) obj;
+        if (!Objects.equals(this.domainPath, other.domainPath)) {
+            return false;
+        }
         if (!Objects.equals(this.domainURL, other.domainURL)) {
             return false;
         }
@@ -91,6 +100,15 @@ public class ProgramData {
     /*
      Getters and Setters
      */
+
+    public String getDomainPath() {
+        return domainPath;
+    }
+
+    public void setDomainPath(String domainPath) {
+        this.domainPath = domainPath;
+    }
+    
     public String getDomainURL() {
         return domainURL.get();
     }
@@ -139,11 +157,11 @@ public class ProgramData {
         return singlePageId;
     }
 
-    public ArrayList<String> getProgramPagesIds() {
+    public List<String> getProgramPagesIds() {
         return programPagesIds;
     }
 
-    public void setProgramPagesIds(ArrayList<String> programPagesIds) {
+    public void setProgramPagesIds(List<String> programPagesIds) {
         this.programPagesIds = programPagesIds;
     }
 
