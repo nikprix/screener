@@ -2,7 +2,7 @@ package com.mykolabs.screener.controllers;
 
 import com.mykolabs.screener.beans.Domains;
 import com.mykolabs.screener.beans.ProgramData;
-import com.mykolabs.screener.beans.SeleniumData;
+import com.mykolabs.screener.beans.SeleniumDataFactory;
 import com.mykolabs.screener.presentation.MainAppFX;
 import com.mykolabs.screener.util.DomainListLoader;
 import java.util.ArrayList;
@@ -212,10 +212,10 @@ public class ScreenerFXMLController {
         // get selected browser and instantiate Screenshoter:
         if (fireFoxRadio.isSelected()) {
             screenshoter
-                    = ScreenshotTaker.getInstance(new SeleniumData("firefox"), programDetails);
+                    = ScreenshotTaker.getInstance("firefox", programDetails);
         } else {
             screenshoter
-                    = ScreenshotTaker.getInstance(new SeleniumData("chrome"), programDetails);
+                    = ScreenshotTaker.getInstance("chrome", programDetails);
         }
 
         // invoke loading of the program's pages method

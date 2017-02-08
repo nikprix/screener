@@ -1,8 +1,10 @@
 package com.mykolabs.screener.controllers;
 
 import com.mykolabs.screener.beans.ProgramData;
-import com.mykolabs.screener.beans.SeleniumData;
+import com.mykolabs.screener.beans.SeleniumDataFactory;
+import com.mykolabs.screener.util.FolderManager;
 import com.mykolabs.screener.util.PropertiesManager;
+import com.mykolabs.screener.util.WebDriverUtil;
 import java.awt.Toolkit;
 import java.util.List;
 import java.util.Properties;
@@ -27,28 +29,29 @@ public class ScreenshotTaker {
     private final static String DOMAIN_PROTOCOL = "http://";
     private final static String WWW = "www";
 
-    private SeleniumData seleniumData;
     private ProgramData programData;
+    private String browser;
+    private String screenshotsFolderPath = "";
 
     /**
      * Static factory method returns an object of this class.
      *
-     * @param seleniumData
+     * @param browser
      * @param programData
      * @return
      */
-    public static ScreenshotTaker getInstance(SeleniumData seleniumData, ProgramData programData) {
-        return new ScreenshotTaker(seleniumData, programData);
+    public static ScreenshotTaker getInstance(String browser, ProgramData programData) {
+        return new ScreenshotTaker(browser, programData);
     }
 
     /**
      * Initializing fields.
      *
-     * @param seleniumData
+     * @param browser
      * @param programData
      */
-    private ScreenshotTaker(SeleniumData seleniumData, ProgramData programData) {
-        this.seleniumData = seleniumData;
+    private ScreenshotTaker(String browser, ProgramData programData) {
+        this.browser = browser;
         this.programData = programData;
     }
 
@@ -59,40 +62,47 @@ public class ScreenshotTaker {
 
         // getting Driver instance, which can be either Firefox or Chrome
         // depending from selected Radio button
-        WebDriver driver = seleniumData.getDriver();
+        WebDriver driver = SeleniumDataFactory.getInstance(browser).getDriver();
 
         // maximizing window, should work for FF and Chrome
         driver.manage().window().maximize();
 
         // maximize Chrome on Mac
-        if (driver instanceof ChromeDriver && OSDetector().contains("mac")) {
-            maximizeScreen(driver);
+        if (driver instanceof ChromeDriver && WebDriverUtil.OSDetector().contains("Mac")) {
+            WebDriverUtil.maximizeScreen(driver);
         }
+
+        // creating folder for screenshots:
+        screenshotsFolderPath = FolderManager.createScreensDir();
 
         // looping through ALL pages IDS
-//        programData.getProgramPagesIds().forEach(pageId
-//                -> {
-//            // load page
-//            log.info("Loading URL: " + this.createPageUrl(pageId));
-//            driver.get(this.createPageUrl(pageId));
-//        }
-//        );
-        List<String> pageIds = programData.getProgramPagesIds();
-        for (String pageId : pageIds) {
-            
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException ex) {
-                java.util.logging.Logger.getLogger(ScreenshotTaker.class.getName()).log(Level.SEVERE, null, ex);
-            }
+        programData.getProgramPagesIds().forEach(pageId
+                -> {
 
             log.info("Loading URL: " + this.createPageUrl(pageId));
+
+            // need to pause Thread completely BEFORE page load
+            WebDriverUtil.setTimeout(2500);
+
             driver.get(this.createPageUrl(pageId));
 
-        }
+            // need to pause Thread completely AFTER page load
+            WebDriverUtil.setTimeout(2500);
 
-        // closing browser's window
-        driver.quit();
+        }
+        );
+
+//        List<String> pageIds = programData.getProgramPagesIds();
+//        for (String pageId : pageIds) {
+//
+//            log.info("Loading URL: " + this.createPageUrl(pageId));
+//
+//            WebDriverUtil.setTimeout(2500);
+//            driver.get(this.createPageUrl(pageId));
+//            WebDriverUtil.setTimeout(2500);
+//        }
+        // Closing browser and removing Webdriver's instance
+        SeleniumDataFactory.getInstance(browser).removeDriver();
 
     }
 
@@ -122,40 +132,6 @@ public class ScreenshotTaker {
                 .append("#")
                 .append(pageId)
                 .toString();
-    }
-
-    /**
-     * Maximizes Chrome.
-     *
-     * @param driver
-     */
-    private void maximizeScreen(WebDriver driver) {
-        java.awt.Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        Point position = new Point(0, 0);
-        driver.manage().window().setPosition(position);
-        Dimension maximizedScreenSize
-                = new Dimension((int) screenSize.getWidth(), (int) screenSize.getHeight());
-        driver.manage().window().setSize(maximizedScreenSize);
-    }
-
-    /**
-     * Detects OS of the user.
-     *
-     * @return
-     */
-    private String OSDetector() {
-        String os = System.getProperty("os.name").toLowerCase();
-        if (os.contains("win")) {
-            return "Windows";
-        } else if (os.contains("nux") || os.contains("nix")) {
-            return "Linux";
-        } else if (os.contains("mac")) {
-            return "Mac";
-        } else if (os.contains("sunos")) {
-            return "Solaris";
-        } else {
-            return "Other";
-        }
     }
 
 }
