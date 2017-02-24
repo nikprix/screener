@@ -52,7 +52,8 @@ public class WebDriverUtil {
     }
 
     /**
-     * Sets timeout for driver. ref: http://stackoverflow.com/a/12915015
+     * Sets timeout for driver. MUST PAUSE THREAD!! ref:
+     * http://stackoverflow.com/a/12915015
      *
      * @param timeMs
      */

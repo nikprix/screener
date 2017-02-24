@@ -17,3 +17,6 @@ hs_err_pid*
 /src/main/resources/project.properties
 /src/main/resources/MessagesBundle.properties
 /src/main/resources/domains.csv
+/src/main/resources/testCode.txt
+/src/main/resources/iframe.html
+

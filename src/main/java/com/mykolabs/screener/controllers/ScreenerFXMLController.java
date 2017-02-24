@@ -5,6 +5,7 @@ import com.mykolabs.screener.beans.ProgramData;
 import com.mykolabs.screener.beans.SeleniumDataFactory;
 import com.mykolabs.screener.presentation.MainAppFX;
 import com.mykolabs.screener.util.DomainListLoader;
+import com.mykolabs.screener.util.WebDriverUtil;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +30,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.Background;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +51,8 @@ public class ScreenerFXMLController {
 
     private BooleanProperty isPageIdsListHasValuesProperty;
 
+    private String userOs;
+
     // The @FXML annotation on a class variable results in the matching
     // reference being injected into the variable
     // label is defined in the fxml file
@@ -65,12 +69,20 @@ public class ScreenerFXMLController {
     private ListView<String> pagesSelectList;
     @FXML // fx:id="singlePageIdField"
     private TextField singlePageIdField;
+    @FXML // fx:id="fireShotRadio"
+    private RadioButton fireShotRadio;
+    @FXML // fx:id="nativeRadio"
+    private RadioButton nativeRadio;
+    @FXML // fx:id="seleniumRadio"
+    private RadioButton seleniumRadio;
     @FXML // fx:id="fireFoxRadio"
     private RadioButton fireFoxRadio;
     @FXML // fx:id="chromeRadio"
     private RadioButton chromeRadio;
     @FXML // fx:id="startScreeningButton"
     private Button startScreeningButton;
+    @FXML // fx:id="stopScreeningButton"
+    private Button stopScreeningButton;
     @FXML // fx:id="getPagesButton"
     private Button getPagesButton;
     // resources were from the FXMLLoader
@@ -101,6 +113,40 @@ public class ScreenerFXMLController {
         // at the beginning, pages List is empty, so its property as well
         isPageIdsListHasValuesProperty.set(false);
 
+        // populating domains choice list drop down with list of domains
+        // from domains.csv file.
+        domainChoiceList.getItems().addAll(DomainListLoader.getInstance().getDomains());
+
+        // making pagesSelectList to accept multiple selection
+        pagesSelectList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        /* 
+        Check user's OS and based on it set corresponding parameters
+        screening options / browser selections for takeScreenshots() method 
+         */
+        userOs = WebDriverUtil.OSDetector();
+        switch (userOs) {
+            case "Mac":
+                // FireShot API is not available on Mac
+                fireShotRadio.setDisable(true);
+                fireShotRadio.getStyleClass().add("disabled-radio-button");
+            case "Windows":
+                break;
+            default:
+            //throw error message;
+        }
+
+        //**************************
+        //**** Listeners **** 
+        //**************************
+        // setting listener to GetPages button to enable it only if 
+        // Domain is selected and collection / presentation ids are entered
+        this.disableGetPagesButton();
+        // setting listener to StartScreening button to enable it only if 
+        // Domain / collection / presentation ids, one item from Pages
+        // and browser are populated/selected
+        this.disableStartScreeningButton();
+
         // need to set listener for singlePageIdField field and update
         // isPageIdsListEmptyProperty to true if page id is entered   
         singlePageIdField.textProperty().addListener((observable, oldValue, newValue)
@@ -114,30 +160,26 @@ public class ScreenerFXMLController {
         }
         );
 
-        // setting listener to GetPages button to enable it only if 
-        // Domain is selected and collection / presentation ids are entered
-        this.disableGetPagesButton();
-        // setting listener to StartScreening button to enable it only if 
-        // Domain / collection / presentation ids, one item from Pages
-        // and browser are populated/selected
-        this.disableStartScreeningButton();
+        // Adding listener to the Native Radio Button
+        nativeRadio.selectedProperty().addListener((ObservableValue<? extends Boolean> obs, Boolean wasPreviouslySelected, Boolean isNowSelected) -> {
+            if (isNowSelected) {
+                disableChromeRadio();
+                fireFoxRadio.selectedProperty().set(true);
+            } else {
+                enableChromeRadio();
+            }
+        });
 
-        // populating domains choice list drop down with list of domains
-        // from domains.csv file.
-        domainChoiceList.getItems().addAll(DomainListLoader.getDomains());
-
-        // making pagesSelectList to accept multiple selection
-        pagesSelectList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-        // printing selected domain's URL to log
-        domainChoiceList.getSelectionModel().selectedItemProperty()
-                .addListener(new ChangeListener<Domains>() {
-                    @Override
-                    public void changed(ObservableValue observable,
-                            Domains oldValue, Domains newValue) {
-                        log.info("Selected URL: " + newValue.getUrl());
-                    }
-                });
+        // Adding listener to the Selenium Radio Button
+        seleniumRadio.selectedProperty().addListener((ObservableValue<? extends Boolean> obs, Boolean wasPreviouslySelected, Boolean isNowSelected) -> {
+            // Mac specific for Selenium
+            if (userOs.equals("Mac") && isNowSelected) {
+               disableFirefoxRadio();
+               chromeRadio.selectedProperty().set(true);
+            } else {
+                enableFirefoxRadio();
+            }
+        });
 
         log.info("end of initializing");
     }
@@ -159,6 +201,26 @@ public class ScreenerFXMLController {
 
     @FXML
     void loadAdvancedWindow(ActionEvent event) {
+
+    }
+
+    @FXML
+    void fireShotRadioSelected(ActionEvent event) {
+
+    }
+
+    @FXML
+    void nativeRadioSelected(ActionEvent event) {
+
+    }
+
+    @FXML
+    void seleniumRadioSelected(ActionEvent event) {
+
+    }
+
+    @FXML
+    void stopScreenshoting(ActionEvent event) {
 
     }
 
@@ -218,9 +280,21 @@ public class ScreenerFXMLController {
                     = ScreenshotTaker.getInstance("chrome", programDetails);
         }
 
-        // invoke loading of the program's pages method
-        screenshoter.takeScreenshots();
+        //********************************************************
+        // New conditions below run different screenshoting methods
+        // depending from the option being selected.
+        //********************************************************
+        
+        if(fireShotRadio.isSelected()){
+        screenshoter.takeScreenshots("Fireshot");
+        } else if(nativeRadio.isSelected()) {
+        screenshoter.takeScreenshots("Native");
+        } else if(seleniumRadio.isSelected()){
+            screenshoter.takeScreenshots("Webdriver");
+        }
+        
 
+        //
         // create folder
         // make screenshots
         // save them as .pdf
@@ -337,6 +411,40 @@ public class ScreenerFXMLController {
         } else if (!pagesSelectList.getSelectionModel().isEmpty()) {
             programDetails.setProgramPagesIds(pagesSelectList.getSelectionModel().getSelectedItems());
         }
+    }
+
+    /**
+     * Disables Firefox radio button
+     */
+    private void disableFirefoxRadio() {
+        fireFoxRadio.selectedProperty().set(false);
+        fireFoxRadio.setDisable(true);
+        fireFoxRadio.getStyleClass().add("disabled-radio-button");
+    }
+
+    /**
+     * Enables Firefox radio button
+     */
+    private void enableFirefoxRadio() {
+        fireFoxRadio.setDisable(false);
+        fireFoxRadio.getStyleClass().remove("disabled-radio-button");
+    }
+
+    /**
+     * Disables Chrome radio button
+     */
+    private void disableChromeRadio() {
+        chromeRadio.selectedProperty().set(false);
+        chromeRadio.setDisable(true);
+        chromeRadio.getStyleClass().add("disabled-radio-button");
+    }
+
+    /**
+     * Enables Chrome radio button
+     */
+    private void enableChromeRadio() {
+        chromeRadio.setDisable(false);
+        chromeRadio.getStyleClass().remove("disabled-radio-button");
     }
 
     /**

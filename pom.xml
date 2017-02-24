@@ -36,6 +36,20 @@
 
     <dependencies>
         
+        <!-- New Lib for screenshots -->
+        <dependency>
+            <groupId>com.assertthat</groupId> 
+            <artifactId>selenium-shutterbug</artifactId>
+            <version>0.6</version>
+        </dependency>
+        
+        <!-- Yandex's screenshot library for webdriver -->
+        <dependency>
+            <groupId>ru.yandex.qatools.ashot</groupId>
+            <artifactId>ashot</artifactId>
+            <version>1.5.2</version>
+        </dependency>
+        
         <!-- OpenCSV lib dependency -->
         <dependency>
             <groupId>com.opencsv</groupId>

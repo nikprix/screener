@@ -4,6 +4,7 @@ import com.mykolabs.screener.beans.Domains;
 import com.opencsv.CSVReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,14 +17,26 @@ import java.util.List;
  */
 public class DomainListLoader {
 
-    private static final String SCV_FILE = "src/main/resources/domains.csv";
+    private static final String SCV_FILE = "domains.csv";
+
+    //create an object of DomainListLoader
+    private static DomainListLoader instance = new DomainListLoader();
+
+    // using singleton pattern
+    private DomainListLoader() {
+    }
+
+    //Get the only object available
+    public static DomainListLoader getInstance() {
+        return instance;
+    }
 
     /**
      * Retrieves domains from the domains.csv file
      *
      * @return
      */
-    public static List<Domains> getDomains() {
+    public List<Domains> getDomains() {
 
         // domains.csv file is simple .csv located in properties
         // to fetch Domain-Url data
@@ -31,7 +44,9 @@ public class DomainListLoader {
         CSVReader reader = null;
 
         try {
-            reader = new CSVReader(new FileReader(SCV_FILE));
+            // proper way to get resources in compiled JAR file: lookup in the classpath, not on the disk
+            //
+            reader = new CSVReader(new InputStreamReader(this.getClass().getClassLoader().getResourceAsStream(SCV_FILE)));
             String[] line;
             // iterate through all lines of the domains.csv file
             while ((line = reader.readNext()) != null) {

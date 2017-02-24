@@ -19,7 +19,7 @@
 }
 
 .choice-box .label {
-     -fx-text-fill: black; 
+    -fx-text-fill: black; 
 }
 
 /* 
@@ -40,8 +40,8 @@
 }
 
 .button:pressed, .button:default:hover:pressed {
-  -fx-background-color: white;
-  -fx-text-fill: #1d1d1d;
+    -fx-background-color: white;
+    -fx-text-fill: #1d1d1d;
 }
 
 .button:focused {
@@ -65,4 +65,8 @@
 
 .button:default:hover {
     -fx-background-color: derive(-fx-focus-color,30%);
+}
+
+.disabled-radio-button {
+    -fx-opacity: 0.3;
 }
