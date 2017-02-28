@@ -45,9 +45,12 @@ public class SeleniumDataFactory implements BrowserDriver {
     private static String driverName;
 
     private static final String FIREFOX_FIRESHOT_ADDON = "full_web_page_screenshots-0.98.89-sm+fx+tb-windows.xpi";
-    private static final String CHROME_FIRESHOT_ADDON = "Take-Webpage-Screenshots-Entirely-FireShot_v0.98.91.crx";
     public static final String FF_PREFIX = "full_web_page_screenshots-0.98.89-sm+fx+tb-windows";
     public static final String FF_SUFFIX = ".xpi";
+
+    private static final String CHROME_FIRESHOT_ADDON = "Take-Webpage-Screenshots-Entirely-FireShot_v0.98.91.crx";
+    public static final String CHROME_PREFIX = "Take-Webpage-Screenshots-Entirely-FireShot_v0.98.91";
+    public static final String CHROME_SUFFIX = ".crx";
 
     private static SeleniumDataFactory instance = new SeleniumDataFactory();
 
@@ -81,7 +84,15 @@ public class SeleniumDataFactory implements BrowserDriver {
                     // Maven dependency: https://github.com/bonigarcia/webdrivermanager
                     // full topic here: http://stackoverflow.com/questions/7450416/selenium-2-chrome-driver
                     FirefoxDriverManager.getInstance().setup();
-                    return new FirefoxDriver(createFFprofileWithAddon());
+
+                    // Since Fireshot API can be used on Windows only,
+                    // checking user's OS and adding profile for Win users only
+                    if (WebDriverUtil.OSDetector().equals("Windows")) {
+                        return new FirefoxDriver(createFFprofileWithAddon());
+                    } else {
+                        return new FirefoxDriver();
+                    }
+
                 case "chrome":
                     // no need to download Chrome binary since we are using 
                     // Maven dependency: https://github.com/bonigarcia/webdrivermanager
@@ -94,11 +105,28 @@ public class SeleniumDataFactory implements BrowserDriver {
                     //options.addArguments("--kiosk"); // this option needs more testing
                     options.addArguments("--start-maximized");
 
-                    return new ChromeDriver(options);
+                    // Since Fireshot API can be used on Windows only,
+                    // checking user's OS and adding profile for Win users only
+                    if (WebDriverUtil.OSDetector().equals("Windows")) {
+                        try {
+                            // add Fireshot extension
+                            options.addExtensions(stream2file(PropertiesManager.class.getClassLoader()
+                                    .getResourceAsStream(CHROME_FIRESHOT_ADDON), driverName));
+                            // after adding extension - disable annoying pop up:
+                            // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> try AutoIt approach: http://stackoverflow.com/a/23204031
+                            return new ChromeDriver(options);
+                        } catch (IOException ex) {
+                            log.info("There was a problem with adding Fireshot to Chrome: " + ex);
+                        }
+                    } else {
+                        // on Mac, just run Crome with default options for full screen
+                        return new ChromeDriver(options);
+                    }
+
                 default:
                     // having default case to avoid exceptions
                     FirefoxDriverManager.getInstance().setup();
-                    return new FirefoxDriver(createFFprofileWithAddon());
+                    return new FirefoxDriver();
             }
         }
     };
@@ -135,11 +163,11 @@ public class SeleniumDataFactory implements BrowserDriver {
 
         try {
             // add extension to profile
-            firefoxprofile.addExtension(stream2file(PropertiesManager.class.getClassLoader().getResourceAsStream(FIREFOX_FIRESHOT_ADDON)));
+            firefoxprofile.addExtension(stream2file(PropertiesManager.class.getClassLoader().getResourceAsStream(FIREFOX_FIRESHOT_ADDON), driverName));
         } catch (IOException ex) {
-            Logger.getLogger(SeleniumDataFactory.class.getName()).log(Level.SEVERE, null, ex);
+            log.info("There was a problem with adding Fireshot to Firefox: " + ex);
         }
-        
+
         // this Preference fixes addon compatibility issues in FF
         firefoxprofile.setPreference("extensions.checkCompatibility." + getCurrentFirefoxVersion() + ".0", false);
 
@@ -149,28 +177,28 @@ public class SeleniumDataFactory implements BrowserDriver {
     /**
      * Returns user's Firefox version.
      *
-     * @return
+     * @return current version of user's Firefox browser
      */
     private static String getCurrentFirefoxVersion() {
         WebDriver tempDriver = new FirefoxDriver();
         Capabilities caps = ((RemoteWebDriver) tempDriver).getCapabilities();
-        
+
         log.info("Browser name: " + caps.getBrowserName());
         log.info("Current Firefox version: " + caps.getVersion());
-                
+
         String ffVersion = caps.getVersion();
-        
+
         // if Capabilities can't define Browser's version - use other method below
-        if(ffVersion.isEmpty()){
+        if (ffVersion.isEmpty()) {
             // load FF support page
             tempDriver.get("about:support");
             // set little timout
             WebDriverUtil.setTimeout(1000);
             ffVersion = tempDriver.findElement(By.id("version-box")).getText();
             // return only 1st number
-            ffVersion = ffVersion.substring(0, ffVersion.indexOf(".")); 
+            ffVersion = ffVersion.substring(0, ffVersion.indexOf("."));
         }
-        
+
         // quit webdriver and close browser
         tempDriver.quit();
         return ffVersion;
@@ -179,12 +207,20 @@ public class SeleniumDataFactory implements BrowserDriver {
     /**
      * Converts InputStream to File.
      *
-     * @param in
-     * @return
+     * @param in InputStream
+     * @return File object for FF/Chrome extension usage in Webdriver
      * @throws IOException
      */
-    private static File stream2file(InputStream in) throws IOException {
-        final File tempFile = File.createTempFile(FF_PREFIX, FF_SUFFIX);
+    private static File stream2file(InputStream in, String browser) throws IOException {
+        final File tempFile;
+
+        if (browser.equals("firefox")) {
+            tempFile = File.createTempFile(FF_PREFIX, FF_SUFFIX);
+        } else {
+            // means we are using Chrome
+            tempFile = File.createTempFile(CHROME_PREFIX, CHROME_SUFFIX);
+        }
+
         // remove temp file when JVM terminates
         tempFile.deleteOnExit();
         try (FileOutputStream out = new FileOutputStream(tempFile)) {

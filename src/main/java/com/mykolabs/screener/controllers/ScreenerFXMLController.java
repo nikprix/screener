@@ -276,6 +276,7 @@ public class ScreenerFXMLController {
             screenshoter
                     = ScreenshotTaker.getInstance("firefox", programDetails);
         } else {
+            // means that Chrome was selected
             screenshoter
                     = ScreenshotTaker.getInstance("chrome", programDetails);
         }

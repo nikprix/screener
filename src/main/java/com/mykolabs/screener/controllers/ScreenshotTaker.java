@@ -30,7 +30,6 @@ import ru.yandex.qatools.ashot.coordinates.WebDriverCoordsProvider;
 
 import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
 
-
 /**
  *
  * @author nikprixmar
@@ -93,79 +92,30 @@ public class ScreenshotTaker {
 
             log.info("Loading URL: " + this.createPageUrl(pageId));
 
-            // need to pause Thread completely BEFORE page load
-            WebDriverUtil.setTimeout(1000);
-
-            /*NEED NEW Instance of JS Executor*/
-            JavascriptExecutor js = (JavascriptExecutor) driver;
-
-// CUSTOM RESIZER #1:
-// http://stackoverflow.com/a/17714422/5971690
-            String innerHtml1 = "\'<head><style type=\"text/css\">body, html{margin: 0; padding: 0; height: 100%;}#content{position:absolute; left: 0; right: 0; bottom: 0; top: 0px; }</style></head><body><div id=\"content\"><iframe id=\"iFrame1\" width=\"100%\" height=\"100%\" frameborder=\"0\" src=\"" + this.createPageUrl(pageId) + "\"></iframe></div></body>\'";
-
-            // This trick allows to open new browser's window with simple HTML page
-            // which later needs to be altered with JS
-            driver.get("about:blank");
-
-            js.executeScript("document.getElementsByTagName('html')[0].innerHTML = " + innerHtml1);
-
-            WebDriverUtil.setTimeout(8000);
-
-            WebElement iframe = driver.findElement(By.tagName("iframe"));
-            driver.switchTo().frame(iframe);
-
-            // retrieving HTML page's width
-            Long pageWidth = (Long) js.executeScript("var width = document.documentElement.scrollWidth;return width;");
-            // retrieving HTML page's max heigth
-            Long pageHeigth = (Long) js.executeScript("var heigth = document.documentElement.scrollHeight;return heigth;");
-            // retrieving Browser window heigth
-            Long windowHeigth = (Long) js.executeScript("var heigth = $(window).height();return heigth;");
-
-            // to avoid truncations, checking if retrieved page heigth less than 
-            // window heigth
-            if (pageHeigth < windowHeigth) {
-                pageHeigth = windowHeigth;
-            }
-
-            WebDriverUtil.setTimeout(1000);
-
-            log.info(pageId + " heigth: " + pageHeigth + "px");
-            log.info(pageId + " width: " + pageWidth + "px");
-
-            // This HTML contains explicit page heigth for iframe
-            String innerHtml2 = "\'<head><style type=\"text/css\">#wrapper {margin: 0; padding: 0; height: 100%;} #content {position:absolute; left: 0; right: 0; bottom: 0; top: 0px;}</style></head><body id=\"wrapper\"><div id=\"content\"><iframe id=\"iFrame1\" width=\"100%\" height=\"" + pageHeigth + "\" frameborder=\"0\" src=\"" + this.createPageUrl(pageId) + "\"></iframe></div></body>\'";
-
-            WebDriverUtil.setTimeout(2000);
-
-            driver.get("about:blank");
-
+            // making screenshots depending from the selected by user option and browser
             if (driver instanceof ChromeDriver) {
-                js.executeScript("document.getElementsByTagName('html')[0].innerHTML = " + innerHtml2);
-                // need to pause Thread completely AFTER page load
-                WebDriverUtil.setTimeout(10000);
-
                 switch (option) {
                     case "Fireshot":
+                        loadProgram(driver, pageId);
                         //takeSingleScreenshotWithFireshotChrome(driver, programScreenshotsFolderPath, pageId);
                         break;
                     case "Webdriver":
+                        loadProgramInIframe(driver, pageId);
                         takeSingleScreenshotShutterbugChrome(driver, programScreenshotsFolderPath, pageId);
                         break;
                 }
 
             } else {
-                js.executeScript("document.getElementsByTagName('html')[0].innerHTML = " + innerHtml2);
-                // need to pause Thread completely AFTER page load
-                WebDriverUtil.setTimeout(10000);
-
                 switch (option) {
                     case "Fireshot":
+                        loadProgram(driver, pageId);
                         //takeSingleScreenshotWithFireshotFirefox(driver, programScreenshotsFolderPath, pageId);
                         break;
                     case "Native":
                         //takeSingleScreenshotWithFirefoxDevTools(driver, programScreenshotsFolderPath, pageId);
                         break;
                     case "Webdriver":
+                        loadProgramInIframe(driver, pageId);
                         takeSingleScreenshotWithAshot(driver, programScreenshotsFolderPath, pageId);
                         break;
                 }
@@ -175,9 +125,95 @@ public class ScreenshotTaker {
             // convert PNG to PDF.
         }
         );
-                WebDriverUtil.setTimeout(100000000);
+        WebDriverUtil.setTimeout(100000000);
         // Closing browser and removing Webdriver's instance
         SeleniumDataFactory.getInstance(browser).removeDriver();
+    }
+
+    /**
+     * Loads program in the selected browser.
+     *
+     * @param driver
+     * @param pageId
+     */
+    private void loadProgram(WebDriver driver, String pageId) {
+
+        // need to pause Thread completely BEFORE page load
+        WebDriverUtil.setTimeout(1000);
+
+        /*NEED NEW Instance of JS Executor*/
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+        driver.get(this.createPageUrl(pageId));
+
+        // need to pause Thread completely AFTER page load
+        WebDriverUtil.setTimeout(10000);
+
+    }
+
+    /**
+     * Allows avoiding problem while making screenhsots on pages with fixed
+     * elements by using iFrames.
+     *
+     * Options, which use it: <br>
+     * - Native;<br>
+     * - Webdriver;<br>
+     *
+     * @param driver
+     * @param pageId
+     */
+    private void loadProgramInIframe(WebDriver driver, String pageId) {
+
+        // need to pause Thread completely BEFORE page load
+        WebDriverUtil.setTimeout(1000);
+
+        /*NEED NEW Instance of JS Executor*/
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+// CUSTOM RESIZER #1:
+// http://stackoverflow.com/a/17714422/5971690
+        String innerHtml1 = "\'<head><style type=\"text/css\">body, html{margin: 0; padding: 0; height: 100%;}#content{position:absolute; left: 0; right: 0; bottom: 0; top: 0px; }</style></head><body><div id=\"content\"><iframe id=\"iFrame1\" width=\"100%\" height=\"100%\" frameborder=\"0\" src=\"" + this.createPageUrl(pageId) + "\"></iframe></div></body>\'";
+
+        // This trick allows to open new browser's window with simple HTML page
+        // which later needs to be altered with JS
+        driver.get("about:blank");
+
+        js.executeScript("document.getElementsByTagName('html')[0].innerHTML = " + innerHtml1);
+
+        WebDriverUtil.setTimeout(8000);
+
+        WebElement iframe = driver.findElement(By.tagName("iframe"));
+        driver.switchTo().frame(iframe);
+
+        // retrieving HTML page's width
+        Long pageWidth = (Long) js.executeScript("var width = document.documentElement.scrollWidth;return width;");
+        // retrieving HTML page's max heigth
+        Long pageHeigth = (Long) js.executeScript("var heigth = document.documentElement.scrollHeight;return heigth;");
+        // retrieving Browser window heigth
+        Long windowHeigth = (Long) js.executeScript("var heigth = $(window).height();return heigth;");
+
+        // to avoid truncations, checking if retrieved page heigth less than 
+        // window heigth
+        if (pageHeigth < windowHeigth) {
+            pageHeigth = windowHeigth;
+        }
+
+        WebDriverUtil.setTimeout(1000);
+
+        log.info(pageId + " heigth: " + pageHeigth + "px");
+        log.info(pageId + " width: " + pageWidth + "px");
+
+        // This HTML contains explicit page heigth for iframe
+        String innerHtml2 = "\'<head><style type=\"text/css\">#wrapper {margin: 0; padding: 0; height: 100%;} #content {position:absolute; left: 0; right: 0; bottom: 0; top: 0px;}</style></head><body id=\"wrapper\"><div id=\"content\"><iframe id=\"iFrame1\" width=\"100%\" height=\"" + pageHeigth + "\" frameborder=\"0\" src=\"" + this.createPageUrl(pageId) + "\"></iframe></div></body>\'";
+
+        WebDriverUtil.setTimeout(2000);
+
+        driver.get("about:blank");
+
+        js.executeScript("document.getElementsByTagName('html')[0].innerHTML = " + innerHtml2);
+        // need to pause Thread completely AFTER page load
+        WebDriverUtil.setTimeout(10000);
+
     }
 
     /**
