@@ -19,8 +19,13 @@ import ru.yandex.qatools.ashot.Screenshot;
 
 import javax.imageio.ImageIO;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.logging.Level;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
@@ -41,6 +46,9 @@ public class ScreenshotTaker {
 
     private final static String DOMAIN_PROTOCOL = "http://";
     private final static String WWW = "www";
+    private final static String FIRESHOT_API_JS = "fsapi.js";
+    private final static String FIRESHOT_API_PREFIX = "fsapi";
+    private final static String FIRESHOT_API_SUFFIX = ".js";
 
     private ProgramData programData;
     private String browser;
@@ -83,21 +91,28 @@ public class ScreenshotTaker {
         // maximizing windows
         this.maximizeWindow(driver);
 
-        // creating required folders
+        // creating required folders to save screenshots into
+        // this includes general folder + program folder
         this.createFolders();
 
-        // looping through ALL pages IDS
+        // looping through ALL selected pages IDS
         programData.getProgramPagesIds().forEach(pageId
                 -> {
 
             log.info("Loading URL: " + this.createPageUrl(pageId));
 
-            // making screenshots depending from the selected by user option and browser
+            // Taking screenshots depending from the selected by user option and browser
             if (driver instanceof ChromeDriver) {
                 switch (option) {
                     case "Fireshot":
                         loadProgram(driver, pageId);
-                        //takeSingleScreenshotWithFireshotChrome(driver, programScreenshotsFolderPath, pageId);
+                         {
+                            try {
+                                takeSingleScreenshotWithFireshot(driver, programScreenshotsFolderPath, pageId);
+                            } catch (IOException ex) {
+                                log.info("There was a problem with launching Fireshot: " + ex);
+                            }
+                        }
                         break;
                     case "Webdriver":
                         loadProgramInIframe(driver, pageId);
@@ -141,9 +156,7 @@ public class ScreenshotTaker {
         // need to pause Thread completely BEFORE page load
         WebDriverUtil.setTimeout(1000);
 
-        /*NEED NEW Instance of JS Executor*/
-        JavascriptExecutor js = (JavascriptExecutor) driver;
-
+        // loading program's page for screenshot
         driver.get(this.createPageUrl(pageId));
 
         // need to pause Thread completely AFTER page load
@@ -213,6 +226,28 @@ public class ScreenshotTaker {
         js.executeScript("document.getElementsByTagName('html')[0].innerHTML = " + innerHtml2);
         // need to pause Thread completely AFTER page load
         WebDriverUtil.setTimeout(10000);
+
+    }
+
+    /**
+     * Takes screenshot using Fireshot's API.
+     *
+     * @param driver
+     * @param folderPath
+     * @param screenshotName
+     */
+    private void takeSingleScreenshotWithFireshot(WebDriver driver, String folderPath, String screenshotName) throws IOException {
+
+        /*NEED NEW Instance of JS Executor*/
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        
+        String script =
+                "var s=window.document.createElement('script'); "
+                + "s.type = 'text/javascript'; "
+                + "s.text = '" + getFireshotAPIfile() + "'; "
+                + "window.document.head.appendChild(s);";
+
+        js.executeScript(script);
 
     }
 
@@ -344,6 +379,30 @@ public class ScreenshotTaker {
         // creating specific Program's screenshots folder
         programScreenshotsFolderPath = FolderManager.createScreensDir(screenshotsFolderPath,
                 programData.getCollectionId() + "_" + programData.getPresentationId());
+    }
+
+    /**
+     * Returns absolute path for the Fireshot API file.
+     */
+    private String getFireshotAPIfile() throws IOException {
+        String FireshotAPIfile = IOUtils.toString(PropertiesManager.class.getClassLoader().getResourceAsStream(FIRESHOT_API_JS), StandardCharsets.UTF_8);
+
+       // escaping single / double quotes / tabs / line breaks / so on
+       FireshotAPIfile = escapeJS(FireshotAPIfile);
+
+        log.info("FireShot API file with no line breaks: " + FireshotAPIfile);
+
+        return FireshotAPIfile;
+    }
+
+    /**
+     * Escapes JS.
+     *
+     * @param value
+     * @return
+     */
+    public static String escapeJS(String value) {
+        return StringEscapeUtils.escapeEcmaScript(value);
     }
 
 }
