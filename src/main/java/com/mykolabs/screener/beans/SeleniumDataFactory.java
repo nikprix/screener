@@ -181,24 +181,25 @@ public class SeleniumDataFactory implements BrowserDriver {
      */
     private static String getCurrentFirefoxVersion() {
         WebDriver tempDriver = new FirefoxDriver();
+        WebDriverUtil.setTimeout(1000);
         Capabilities caps = ((RemoteWebDriver) tempDriver).getCapabilities();
 
         log.info("Browser name: " + caps.getBrowserName());
-        log.info("Current Firefox version: " + caps.getVersion());
+        log.info("Current Firefox version extracted from Capabilities: " + caps.getVersion());
 
         String ffVersion = caps.getVersion();
-
+        WebDriverUtil.setTimeout(1000);
         // if Capabilities can't define Browser's version - use other method below
-        if (ffVersion.isEmpty()) {
+        if (ffVersion.isEmpty() || ffVersion.equals("")) {
             // load FF support page
             tempDriver.get("about:support");
             // set little timout
-            WebDriverUtil.setTimeout(1000);
+            WebDriverUtil.setTimeout(2000);
             ffVersion = tempDriver.findElement(By.id("version-box")).getText();
             // return only 1st number
             ffVersion = ffVersion.substring(0, ffVersion.indexOf("."));
         }
-
+        log.info("Firefox version extracted using Webdriver: " + ffVersion);
         // quit webdriver and close browser
         tempDriver.quit();
         return ffVersion;

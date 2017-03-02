@@ -50,6 +50,8 @@ public class ScreenshotTaker {
     private final static String FIRESHOT_API_PREFIX = "fsapi";
     private final static String FIRESHOT_API_SUFFIX = ".js";
 
+    private final static String FIRESHOT_CHROME_EXT_PATH = "﻿chrome-extension://mcbpblocgmgfnpjjppndjkmgjaogfceg/fsOptions.html";
+
     private ProgramData programData;
     private String browser;
     private String screenshotsFolderPath = "";
@@ -105,10 +107,10 @@ public class ScreenshotTaker {
             if (driver instanceof ChromeDriver) {
                 switch (option) {
                     case "Fireshot":
-                        loadProgram(driver, pageId);
+                        loadSiteInBrowser(driver, pageId);
                          {
                             try {
-                                takeSingleScreenshotWithFireshot(driver, programScreenshotsFolderPath, pageId);
+                                takeSingleScreenshotWithFireshotChrome(driver, programScreenshotsFolderPath, pageId);
                             } catch (IOException ex) {
                                 log.info("There was a problem with launching Fireshot: " + ex);
                             }
@@ -123,8 +125,14 @@ public class ScreenshotTaker {
             } else {
                 switch (option) {
                     case "Fireshot":
-                        loadProgram(driver, pageId);
-                        //takeSingleScreenshotWithFireshotFirefox(driver, programScreenshotsFolderPath, pageId);
+                        loadSiteInBrowser(driver, pageId);
+                         {
+                            try {
+                                takeSingleScreenshotWithFireshotFirefox(driver, programScreenshotsFolderPath, pageId);
+                            } catch (IOException ex) {
+                                log.info("There was a problem with launching Fireshot: " + ex);
+                            }
+                        }
                         break;
                     case "Native":
                         //takeSingleScreenshotWithFirefoxDevTools(driver, programScreenshotsFolderPath, pageId);
@@ -151,7 +159,7 @@ public class ScreenshotTaker {
      * @param driver
      * @param pageId
      */
-    private void loadProgram(WebDriver driver, String pageId) {
+    private void loadSiteInBrowser(WebDriver driver, String pageId) {
 
         // need to pause Thread completely BEFORE page load
         WebDriverUtil.setTimeout(1000);
@@ -230,23 +238,39 @@ public class ScreenshotTaker {
     }
 
     /**
-     * Takes screenshot using Fireshot's API.
+     * Takes screenshot using Fireshot's API in Chrome.
      *
      * @param driver
      * @param folderPath
      * @param screenshotName
      */
-    private void takeSingleScreenshotWithFireshot(WebDriver driver, String folderPath, String screenshotName) throws IOException {
+    private void takeSingleScreenshotWithFireshotChrome(WebDriver driver, String folderPath, String screenshotName) throws IOException {
+        // enabling FireShot API
+        enableFireShotAPIChrome(driver);
 
+        // injecting FireShot API into the page
+        injectFireshotAPIintoDOM(driver);
+    }
+
+    /**
+     * Takes screenshot using Fireshot's API in Firefox.
+     *
+     * @param driver
+     * @param folderPath
+     * @param screenshotName
+     */
+    private void takeSingleScreenshotWithFireshotFirefox(WebDriver driver, String folderPath, String screenshotName) throws IOException {
+        // IMPORTANT - for now, FireShot API is enabled by default, no need to enable it
+        // like in Chrome
+
+        // injecting FireShot API into the page
+        injectFireshotAPIintoDOM(driver);
+
+        //save screenshot
         /*NEED NEW Instance of JS Executor*/
         JavascriptExecutor js = (JavascriptExecutor) driver;
-        
-        String script =
-                "var s=window.document.createElement('script'); "
-                + "s.type = 'text/javascript'; "
-                + "s.text = '" + getFireshotAPIfile() + "'; "
-                + "window.document.head.appendChild(s);";
-
+        // preparing script
+        String script = "FireShotAPI.savePage(true)";
         js.executeScript(script);
 
     }
@@ -381,18 +405,55 @@ public class ScreenshotTaker {
                 programData.getCollectionId() + "_" + programData.getPresentationId());
     }
 
+    private void enableFireShotAPIChrome(WebDriver driver) {
+        
+        // need to open new tab
+
+        // loading Addon't settings page
+        driver.get(FIRESHOT_CHROME_EXT_PATH);
+
+        // set little timout
+        WebDriverUtil.setTimeout(2000);
+        // check Fireshot API checkbox
+        driver.findElement(By.id("chkAPI")).click();
+        // Save
+
+
+    }
+
     /**
      * Returns absolute path for the Fireshot API file.
      */
     private String getFireshotAPIfile() throws IOException {
         String FireshotAPIfile = IOUtils.toString(PropertiesManager.class.getClassLoader().getResourceAsStream(FIRESHOT_API_JS), StandardCharsets.UTF_8);
 
-       // escaping single / double quotes / tabs / line breaks / so on
-       FireshotAPIfile = escapeJS(FireshotAPIfile);
+        // escaping single / double quotes / tabs / line breaks / so on
+        FireshotAPIfile = escapeJS(FireshotAPIfile);
 
         log.info("FireShot API file with no line breaks: " + FireshotAPIfile);
 
         return FireshotAPIfile;
+    }
+
+    /**
+     * Injects FireShot API js into the loaded DOM
+     *
+     * @param driver
+     */
+    private void injectFireshotAPIintoDOM(WebDriver driver) throws IOException {
+
+        /*NEED NEW Instance of JS Executor*/
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+        // preparing script to inject into the program's DOM
+        String script
+                = "var s=window.document.createElement('script'); "
+                + "s.type = 'text/javascript'; "
+                + "s.text = '" + getFireshotAPIfile() + "'; "
+                + "window.document.head.appendChild(s);";
+
+        js.executeScript(script);
+
     }
 
     /**
