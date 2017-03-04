@@ -7,6 +7,9 @@ import com.mykolabs.screener.beans.SeleniumDataFactory;
 import com.mykolabs.screener.util.FolderManager;
 import com.mykolabs.screener.util.PropertiesManager;
 import com.mykolabs.screener.util.WebDriverUtil;
+import java.awt.AWTException;
+import java.awt.Robot;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.util.Properties;
 
@@ -22,6 +25,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.logging.Level;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -50,7 +54,7 @@ public class ScreenshotTaker {
     private final static String FIRESHOT_API_PREFIX = "fsapi";
     private final static String FIRESHOT_API_SUFFIX = ".js";
 
-    private final static String FIRESHOT_CHROME_EXT_PATH = "﻿chrome-extension://mcbpblocgmgfnpjjppndjkmgjaogfceg/fsOptions.html";
+    private final static String FIRESHOT_CHROME_EXT_PATH = "chrome-extension://mcbpblocgmgfnpjjppndjkmgjaogfceg/fsOptions.html";
 
     private ProgramData programData;
     private String browser;
@@ -97,6 +101,14 @@ public class ScreenshotTaker {
         // this includes general folder + program folder
         this.createFolders();
 
+        // Enabling Fireshot's API - ONLY in Crome at the moment
+        if (driver instanceof ChromeDriver) {
+            if (option.equals("Fireshot")) {
+                // enabling FireShot API in Chrome
+                enableFireShotAPIChrome(driver);
+            }
+        }
+
         // looping through ALL selected pages IDS
         programData.getProgramPagesIds().forEach(pageId
                 -> {
@@ -107,14 +119,18 @@ public class ScreenshotTaker {
             if (driver instanceof ChromeDriver) {
                 switch (option) {
                     case "Fireshot":
+                        // load page in the browser
                         loadSiteInBrowser(driver, pageId);
-                         {
-                            try {
-                                takeSingleScreenshotWithFireshotChrome(driver, programScreenshotsFolderPath, pageId);
-                            } catch (IOException ex) {
-                                log.info("There was a problem with launching Fireshot: " + ex);
-                            }
+                        try {
+                            // injecting FireShot API into the page
+                            injectFireshotAPIintoDOM(driver);
+
+                            takeSingleScreenshotWithFireshotChrome(driver, programScreenshotsFolderPath, pageId);
+
+                        } catch (IOException ex) {
+                            log.info("There was a problem injecting Fireshot API: " + ex);
                         }
+
                         break;
                     case "Webdriver":
                         loadProgramInIframe(driver, pageId);
@@ -245,11 +261,7 @@ public class ScreenshotTaker {
      * @param screenshotName
      */
     private void takeSingleScreenshotWithFireshotChrome(WebDriver driver, String folderPath, String screenshotName) throws IOException {
-        // enabling FireShot API
-        enableFireShotAPIChrome(driver);
 
-        // injecting FireShot API into the page
-        injectFireshotAPIintoDOM(driver);
     }
 
     /**
@@ -405,20 +417,39 @@ public class ScreenshotTaker {
                 programData.getCollectionId() + "_" + programData.getPresentationId());
     }
 
+    /**
+     * Enables Fireshot's API in settings.
+     *
+     * @param driver
+     */
     private void enableFireShotAPIChrome(WebDriver driver) {
-        
+        log.info("Loading Fireshot's settings page: " + FIRESHOT_CHROME_EXT_PATH);
         // need to open new tab
-
         // loading Addon't settings page
         driver.get(FIRESHOT_CHROME_EXT_PATH);
-
-        // set little timout
+        // set small timout
         WebDriverUtil.setTimeout(2000);
         // check Fireshot API checkbox
-        driver.findElement(By.id("chkAPI")).click();
-        // Save
-
-
+        WebElement apiCheckbox = driver.findElement(By.id("chkAPI"));
+        if (!apiCheckbox.isSelected()) {
+            apiCheckbox.click();
+        }
+        WebDriverUtil.setTimeout(1000);
+        // Apply changes
+        driver.findElement(By.id("btnApply")).click();
+        WebDriverUtil.setTimeout(1000);
+        // Accept premission
+        acceptFireshotPermissionOnApply();
+        WebDriverUtil.setTimeout(1000);
+        // Save changes
+        driver.findElement(By.id("btnSave")).click();
+        WebDriverUtil.setTimeout(1000);
+        // switch to the 1st tab:
+        ArrayList<String> tabs = new ArrayList<>(driver.getWindowHandles());
+        // closing all tabs but 1st
+        closeTabsExceptFirst(tabs, driver);
+        // switching to the 1st tab
+        driver.switchTo().window(tabs.get(0));
     }
 
     /**
@@ -464,6 +495,34 @@ public class ScreenshotTaker {
      */
     public static String escapeJS(String value) {
         return StringEscapeUtils.escapeEcmaScript(value);
+    }
+
+    /**
+     * Closes all tabs but 1st.
+     *
+     * @param tabs
+     */
+    private void closeTabsExceptFirst(ArrayList<String> tabs, WebDriver driver) {
+        tabs.forEach(tab -> {
+            if (!tabs.get(0).equals(tab)) {
+                driver.switchTo().window(tab).close();
+            }
+        });
+    }
+
+    /**
+     * Accepts permission pop up.
+     */
+    private void acceptFireshotPermissionOnApply() {
+        Robot robot = null;
+        try {
+            robot = new Robot();
+            robot.keyPress(KeyEvent.VK_TAB);
+            robot.keyPress(KeyEvent.VK_ENTER);
+            robot.delay(500);
+        } catch (AWTException e) {
+            log.error("Failed to press buttons: " + e.getMessage());
+        }
     }
 
 }

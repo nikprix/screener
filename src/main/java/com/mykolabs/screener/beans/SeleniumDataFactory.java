@@ -104,6 +104,10 @@ public class SeleniumDataFactory implements BrowserDriver {
                     ChromeOptions options = new ChromeOptions();
                     //options.addArguments("--kiosk"); // this option needs more testing
                     options.addArguments("--start-maximized");
+                    // trying to disable permission pop up messages:
+                    //http://peter.sh/experiments/chromium-command-line-switches/#always-authorize-plugins
+                    //options.addArguments("--use-fake-ui-for-media-stream");
+                    //options.addArguments("--always-authorize-plugins=true");
 
                     // Since Fireshot API can be used on Windows only,
                     // checking user's OS and adding profile for Win users only
