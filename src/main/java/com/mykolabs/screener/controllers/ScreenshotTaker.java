@@ -26,12 +26,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.logging.Level;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebElement;
@@ -53,8 +55,11 @@ public class ScreenshotTaker {
     private final static String FIRESHOT_API_JS = "fsapi.js";
     private final static String FIRESHOT_API_PREFIX = "fsapi";
     private final static String FIRESHOT_API_SUFFIX = ".js";
+    private final static String FIRESHOT_API_SAVE = "FireShotAPI.savePage(true);";
 
     private final static String FIRESHOT_CHROME_EXT_PATH = "chrome-extension://mcbpblocgmgfnpjjppndjkmgjaogfceg/fsOptions.html";
+
+    private final static String MDADI_PAUSE_AUTONEXT = "mdi.progressController.stopTimer()";
 
     private ProgramData programData;
     private String browser;
@@ -104,13 +109,23 @@ public class ScreenshotTaker {
         // Enabling Fireshot's API - ONLY in Crome at the moment
         if (driver instanceof ChromeDriver) {
             if (option.equals("Fireshot")) {
+
+//                // switch to the 1st tab:
+//                ArrayList<String> tabs = new ArrayList<>(driver.getWindowHandles());
+//                // closing all tabs but 1st
+//                closeTabsExceptFirst(tabs, driver);
+//                // switching to the 1st tab
+//                driver.switchTo().window(tabs.get(0));
+//
+//                WebDriverUtil.setTimeout(1000);
+
                 // enabling FireShot API in Chrome
                 enableFireShotAPIChrome(driver);
             }
         }
 
         // looping through ALL selected pages IDS
-        programData.getProgramPagesIds().forEach(pageId
+        programData.getProgramPagesIds().forEach((String pageId)
                 -> {
 
             log.info("Loading URL: " + this.createPageUrl(pageId));
@@ -161,6 +176,9 @@ public class ScreenshotTaker {
 
             }
 
+            // every time page get's processed and screenshot is taken 
+            // we might want to set timeout too at this point
+            // WebDriverUtil.setTimeout(100000000);
             // convert PNG to PDF.
         }
         );
@@ -176,16 +194,16 @@ public class ScreenshotTaker {
      * @param pageId
      */
     private void loadSiteInBrowser(WebDriver driver, String pageId) {
-
         // need to pause Thread completely BEFORE page load
         WebDriverUtil.setTimeout(1000);
-
         // loading program's page for screenshot
         driver.get(this.createPageUrl(pageId));
-
+        // small timeout
+        WebDriverUtil.setTimeout(500);
+        // need to pause autonext if it's enabled
+        executeJsScriptInBrowser(driver, MDADI_PAUSE_AUTONEXT);
         // need to pause Thread completely AFTER page load
         WebDriverUtil.setTimeout(10000);
-
     }
 
     /**
@@ -261,6 +279,15 @@ public class ScreenshotTaker {
      * @param screenshotName
      */
     private void takeSingleScreenshotWithFireshotChrome(WebDriver driver, String folderPath, String screenshotName) throws IOException {
+        /*NEED NEW Instance of JS Executor*/
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+        // executing FireShot API's save function
+        js.executeScript(FIRESHOT_API_SAVE);
+
+        // Saving takes couple of seconds, we need to set timeout
+        // to make sure nothing happens while saving is happening in the browser
+        WebDriverUtil.setTimeout(5000);
 
     }
 
@@ -282,8 +309,7 @@ public class ScreenshotTaker {
         /*NEED NEW Instance of JS Executor*/
         JavascriptExecutor js = (JavascriptExecutor) driver;
         // preparing script
-        String script = "FireShotAPI.savePage(true)";
-        js.executeScript(script);
+        js.executeScript(FIRESHOT_API_SAVE);
 
     }
 
@@ -423,6 +449,49 @@ public class ScreenshotTaker {
      * @param driver
      */
     private void enableFireShotAPIChrome(WebDriver driver) {
+        
+        log.info("Enabling Fireshot API");
+
+        // get a list of the currently open windows
+        Set<String> firstWindows = driver.getWindowHandles();
+        
+        // save the window handle for the current window
+        String originalTabHandle = driver.getWindowHandle();
+
+        // open new window
+        openNewChromeWindowRobot();
+
+        // open a new window using executeScript
+        //((JavascriptExecutor) driver).executeScript("window.open();");
+        log.info("Opening new window");
+
+        // get a second list of the currently open windows
+        // this will be the same as the first list PLUS the new window
+        Set<String> apiWindow = driver.getWindowHandles();
+
+        // remove all the original windows handles from the second list
+        // this should leave the second list (apiWindow) with only one window handle, e.g. the new window.
+        apiWindow.removeAll(firstWindows);
+        
+        // closing all tabs in original window -> closes window
+        closeAllTabs(firstWindows, driver);
+        
+        // getting API tab handle from the handles list
+        String apiTabHandle = ((String) apiWindow.toArray()[0]);
+        driver.switchTo().window(apiTabHandle);
+
+        // loading dumy page in tab#1
+        driver.get("about:blank");
+        
+        // remember this tab
+        String newFirstTabHandle = driver.getWindowHandle();
+        
+        // open new tab and switch to it
+        openNewChromeTabRobot();
+        Set<String> newWindow = driver.getWindowHandles();
+        String newTabHandle = ((String) newWindow.toArray()[1]);
+        driver.switchTo().window(newTabHandle);
+        
         log.info("Loading Fireshot's settings page: " + FIRESHOT_CHROME_EXT_PATH);
         // need to open new tab
         // loading Addon't settings page
@@ -439,17 +508,22 @@ public class ScreenshotTaker {
         driver.findElement(By.id("btnApply")).click();
         WebDriverUtil.setTimeout(1000);
         // Accept premission
-        acceptFireshotPermissionOnApply();
+        this.acceptFireshotPermissionOnApply();
         WebDriverUtil.setTimeout(1000);
         // Save changes
         driver.findElement(By.id("btnSave")).click();
         WebDriverUtil.setTimeout(1000);
-        // switch to the 1st tab:
-        ArrayList<String> tabs = new ArrayList<>(driver.getWindowHandles());
-        // closing all tabs but 1st
-        closeTabsExceptFirst(tabs, driver);
-        // switching to the 1st tab
-        driver.switchTo().window(tabs.get(0));
+
+
+//switch to the NEW parent window
+       driver.switchTo().window(newFirstTabHandle); 
+
+//        // switch to the 1st tab:
+//        ArrayList<String> tabs = new ArrayList<>(driver.getWindowHandles());
+//        // closing all tabs but 1st
+//        closeTabsExceptFirst(tabs, driver);
+//        // switching to the 1st tab
+//        driver.switchTo().window(tabs.get(0));
     }
 
     /**
@@ -509,17 +583,91 @@ public class ScreenshotTaker {
             }
         });
     }
+    
+    /**
+     * Closes ALL tabs.
+     *
+     * @param tabs
+     */
+    private void closeAllTabs(Set<String> tabs, WebDriver driver) {
+        tabs.forEach(tab -> {
+                driver.switchTo().window(tab).close();
+        });
+    }
+
+    /**
+     * Executes provided JS script.
+     *
+     * @param driver Webdriver's instance
+     * @param script JS script in String format
+     */
+    private void executeJsScriptInBrowser(WebDriver driver, String script) {
+        /*NEED NEW Instance of JS Executor*/
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        js.executeScript(script);
+        log.info("Script executed: " + script);
+    }
 
     /**
      * Accepts permission pop up.
      */
     private void acceptFireshotPermissionOnApply() {
-        Robot robot = null;
+        Robot robot;
         try {
             robot = new Robot();
             robot.keyPress(KeyEvent.VK_TAB);
+            robot.delay(100);
+            robot.keyRelease(KeyEvent.VK_TAB);
+            robot.delay(100);
             robot.keyPress(KeyEvent.VK_ENTER);
-            robot.delay(500);
+            robot.delay(100);
+            robot.keyRelease(KeyEvent.VK_ENTER);
+            robot.delay(100);
+        } catch (AWTException e) {
+            log.error("Failed to press buttons: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Used to load Chrome NEW window. This will also close annoying
+     * 'Disable Developer Extensions popup' popup.
+     */
+    private void openNewChromeWindowRobot() {
+
+        // opening new window
+        Robot robot;
+        try {
+            robot = new Robot();
+            robot.keyPress(KeyEvent.VK_CONTROL);
+            robot.delay(100);
+            robot.keyPress(KeyEvent.VK_N);
+            robot.delay(100);
+            robot.keyRelease(KeyEvent.VK_N);
+            robot.delay(100);
+            robot.keyRelease(KeyEvent.VK_CONTROL);
+            robot.delay(100);
+        } catch (AWTException e) {
+            log.error("Failed to press buttons: " + e.getMessage());
+        }
+    }
+    
+        /**
+     * Used to load Chrome NEW tab. 
+     */
+    private void openNewChromeTabRobot() {
+
+        // opening new tab
+        Robot robot;
+        try {
+            robot = new Robot();
+            robot.keyPress(KeyEvent.VK_CONTROL);
+            robot.delay(100);
+            robot.keyPress(KeyEvent.VK_T);
+            robot.delay(100);
+            robot.keyRelease(KeyEvent.VK_T);
+            robot.delay(100);
+            robot.keyRelease(KeyEvent.VK_CONTROL);
+            robot.delay(100);
         } catch (AWTException e) {
             log.error("Failed to press buttons: " + e.getMessage());
         }
