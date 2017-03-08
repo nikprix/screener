@@ -65,6 +65,7 @@ public class ScreenshotTaker {
     private String browser;
     private String screenshotsFolderPath = "";
     private String programScreenshotsFolderPath = "";
+    private String programScreenshotsFolderPathPDF = "";
 
     /**
      * Static factory method returns an object of this class.
@@ -95,30 +96,22 @@ public class ScreenshotTaker {
      */
     public void takeScreenshots(String option) {
 
+        // Getting SeleniumDataFactory instance reference at first
+        SeleniumDataFactory seleniumFactoryInstance = SeleniumDataFactory.getInstance(browser, programData);
+
         // getting Driver instance, which can be either Firefox or Chrome
         // depending from selected Radio button
-        WebDriver driver = SeleniumDataFactory.getInstance(browser).getDriver();
+        WebDriver driver = seleniumFactoryInstance.getDriver();
 
+        // initializing folder Paths, created during Webdriver instantiation
+        getFolderPaths(seleniumFactoryInstance);
+        
         // maximizing windows
-        this.maximizeWindow(driver);
-
-        // creating required folders to save screenshots into
-        // this includes general folder + program folder
-        this.createFolders();
+        maximizeWindow(driver);
 
         // Enabling Fireshot's API - ONLY in Crome at the moment
         if (driver instanceof ChromeDriver) {
             if (option.equals("Fireshot")) {
-
-//                // switch to the 1st tab:
-//                ArrayList<String> tabs = new ArrayList<>(driver.getWindowHandles());
-//                // closing all tabs but 1st
-//                closeTabsExceptFirst(tabs, driver);
-//                // switching to the 1st tab
-//                driver.switchTo().window(tabs.get(0));
-//
-//                WebDriverUtil.setTimeout(1000);
-
                 // enabling FireShot API in Chrome
                 enableFireShotAPIChrome(driver);
             }
@@ -140,6 +133,7 @@ public class ScreenshotTaker {
                             // injecting FireShot API into the page
                             injectFireshotAPIintoDOM(driver);
 
+                            // take screenshot now
                             takeSingleScreenshotWithFireshotChrome(driver, programScreenshotsFolderPath, pageId);
 
                         } catch (IOException ex) {
@@ -184,7 +178,7 @@ public class ScreenshotTaker {
         );
         WebDriverUtil.setTimeout(100000000);
         // Closing browser and removing Webdriver's instance
-        SeleniumDataFactory.getInstance(browser).removeDriver();
+        SeleniumDataFactory.getInstance(browser, programData).removeDriver();
     }
 
     /**
@@ -198,12 +192,14 @@ public class ScreenshotTaker {
         WebDriverUtil.setTimeout(1000);
         // loading program's page for screenshot
         driver.get(this.createPageUrl(pageId));
-        // small timeout
-        WebDriverUtil.setTimeout(500);
+        // need to pause Thread completely AFTER page load
+        WebDriverUtil.setTimeout(5000);
         // need to pause autonext if it's enabled
         executeJsScriptInBrowser(driver, MDADI_PAUSE_AUTONEXT);
-        // need to pause Thread completely AFTER page load
-        WebDriverUtil.setTimeout(10000);
+        // need to pause Thread completely AFTER page load again to avoid issues
+        WebDriverUtil.setTimeout(5000);
+        // need to pause autonext if it's enabled again to avoid issues
+        executeJsScriptInBrowser(driver, MDADI_PAUSE_AUTONEXT);
     }
 
     /**
@@ -279,6 +275,7 @@ public class ScreenshotTaker {
      * @param screenshotName
      */
     private void takeSingleScreenshotWithFireshotChrome(WebDriver driver, String folderPath, String screenshotName) throws IOException {
+
         /*NEED NEW Instance of JS Executor*/
         JavascriptExecutor js = (JavascriptExecutor) driver;
 
@@ -431,38 +428,22 @@ public class ScreenshotTaker {
     }
 
     /**
-     * Creates folders, required for saving screenshots
-     */
-    private void createFolders() {
-        // creating parent folder for screenshots:
-        screenshotsFolderPath = FolderManager.createScreensDir(
-                FolderManager.getUserDesktopDirPath(), "mDADI_Screens");
-
-        // creating specific Program's screenshots folder
-        programScreenshotsFolderPath = FolderManager.createScreensDir(screenshotsFolderPath,
-                programData.getCollectionId() + "_" + programData.getPresentationId());
-    }
-
-    /**
      * Enables Fireshot's API in settings.
      *
      * @param driver
      */
     private void enableFireShotAPIChrome(WebDriver driver) {
-        
+
         log.info("Enabling Fireshot API");
 
         // get a list of the currently open windows
-        Set<String> firstWindows = driver.getWindowHandles();
-        
+        Set<String> firstWindow = driver.getWindowHandles();
+
         // save the window handle for the current window
         String originalTabHandle = driver.getWindowHandle();
 
         // open new window
         openNewChromeWindowRobot();
-
-        // open a new window using executeScript
-        //((JavascriptExecutor) driver).executeScript("window.open();");
         log.info("Opening new window");
 
         // get a second list of the currently open windows
@@ -471,29 +452,29 @@ public class ScreenshotTaker {
 
         // remove all the original windows handles from the second list
         // this should leave the second list (apiWindow) with only one window handle, e.g. the new window.
-        apiWindow.removeAll(firstWindows);
-        
+        apiWindow.removeAll(firstWindow);
+
         // closing all tabs in original window -> closes window
-        closeAllTabs(firstWindows, driver);
-        
+        closeAllTabs(firstWindow, driver);
+
         // getting API tab handle from the handles list
         String apiTabHandle = ((String) apiWindow.toArray()[0]);
         driver.switchTo().window(apiTabHandle);
 
-        // loading dumy page in tab#1
+        // loading dummy page in tab#1, need it because after enabling FireShot API
+        // on its settings page and saving - settings tab gets closed automatically
         driver.get("about:blank");
-        
-        // remember this tab
-        String newFirstTabHandle = driver.getWindowHandle();
-        
+
+        // remember this opened tab
+        String firstTabInApiWindowHandle = driver.getWindowHandle();
+
         // open new tab and switch to it
         openNewChromeTabRobot();
         Set<String> newWindow = driver.getWindowHandles();
-        String newTabHandle = ((String) newWindow.toArray()[1]);
-        driver.switchTo().window(newTabHandle);
-        
+        String secondTabInApiWindowHandle = ((String) newWindow.toArray()[1]);
+        driver.switchTo().window(secondTabInApiWindowHandle);
+
         log.info("Loading Fireshot's settings page: " + FIRESHOT_CHROME_EXT_PATH);
-        // need to open new tab
         // loading Addon't settings page
         driver.get(FIRESHOT_CHROME_EXT_PATH);
         // set small timout
@@ -514,16 +495,9 @@ public class ScreenshotTaker {
         driver.findElement(By.id("btnSave")).click();
         WebDriverUtil.setTimeout(1000);
 
+        //switch to the BACK to the first tab in current window
+        driver.switchTo().window(firstTabInApiWindowHandle);
 
-//switch to the NEW parent window
-       driver.switchTo().window(newFirstTabHandle); 
-
-//        // switch to the 1st tab:
-//        ArrayList<String> tabs = new ArrayList<>(driver.getWindowHandles());
-//        // closing all tabs but 1st
-//        closeTabsExceptFirst(tabs, driver);
-//        // switching to the 1st tab
-//        driver.switchTo().window(tabs.get(0));
     }
 
     /**
@@ -583,15 +557,15 @@ public class ScreenshotTaker {
             }
         });
     }
-    
+
     /**
-     * Closes ALL tabs.
+     * Closes ALL tabs in the given window.
      *
      * @param tabs
      */
     private void closeAllTabs(Set<String> tabs, WebDriver driver) {
         tabs.forEach(tab -> {
-                driver.switchTo().window(tab).close();
+            driver.switchTo().window(tab).close();
         });
     }
 
@@ -629,8 +603,8 @@ public class ScreenshotTaker {
     }
 
     /**
-     * Used to load Chrome NEW window. This will also close annoying
-     * 'Disable Developer Extensions popup' popup.
+     * Used to load Chrome NEW window. This will also close annoying 'Disable
+     * Developer Extensions popup' popup.
      */
     private void openNewChromeWindowRobot() {
 
@@ -650,9 +624,9 @@ public class ScreenshotTaker {
             log.error("Failed to press buttons: " + e.getMessage());
         }
     }
-    
-        /**
-     * Used to load Chrome NEW tab. 
+
+    /**
+     * Used to load Chrome NEW tab.
      */
     private void openNewChromeTabRobot() {
 
@@ -672,5 +646,16 @@ public class ScreenshotTaker {
             log.error("Failed to press buttons: " + e.getMessage());
         }
     }
+
+    /**
+     * Initializes folder paths fields.
+     *
+     * @param seleniumFactoryInstance
+     */
+    private void getFolderPaths(SeleniumDataFactory seleniumFactoryInstance) {
+    screenshotsFolderPath = seleniumFactoryInstance.getFolderPaths().get("screenshotsFolderPath");
+    programScreenshotsFolderPath = seleniumFactoryInstance.getFolderPaths().get("programScreenshotsFolderPath");
+    programScreenshotsFolderPathPDF = seleniumFactoryInstance.getFolderPaths().get("programScreenshotsFolderPathPDF");
+}
 
 }

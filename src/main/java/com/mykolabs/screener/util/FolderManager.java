@@ -66,10 +66,10 @@ public class FolderManager {
         // important to define user's OS to have path specified correctly
         switch (WebDriverUtil.OSDetector()) {
             case "Mac":
-                directoryName = parentPath.concat("/" + folderName + "/");
+                directoryName = parentPath.concat("/" + folderName);
                 break;
             case "Windows":
-                directoryName = parentPath.concat("\\" + folderName + "\\");
+                directoryName = parentPath.concat("\\" + folderName);
                 break;
             // here, in case of the issues with 2 above cases we just concatenate
             // desired folder name to provided path. Note, there is no slash at the

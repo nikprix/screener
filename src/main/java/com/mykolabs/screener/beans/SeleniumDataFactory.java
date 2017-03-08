@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.io.IOUtils;
@@ -54,6 +56,9 @@ public class SeleniumDataFactory implements BrowserDriver {
 
     private static SeleniumDataFactory instance = new SeleniumDataFactory();
 
+    private static ProgramData programData;
+    private static Map<String, String> folderPaths;
+
     /**
      * Default constructor. Does nothing.. Does not allow to initialize this
      * class from outside.
@@ -65,10 +70,15 @@ public class SeleniumDataFactory implements BrowserDriver {
      * Returns factory instance.
      *
      * @param driverName
+     * @param programData
      * @return
      */
-    public static SeleniumDataFactory getInstance(String driverName) {
+    public static SeleniumDataFactory getInstance(String driverName, ProgramData programData) {
+        // initializing some fields
         SeleniumDataFactory.driverName = driverName;
+        SeleniumDataFactory.programData = programData;
+        SeleniumDataFactory.folderPaths = new HashMap<>();
+        // returning new instance
         return instance;
     }
 
@@ -78,6 +88,10 @@ public class SeleniumDataFactory implements BrowserDriver {
     ThreadLocal<WebDriver> driver = new ThreadLocal<WebDriver>() {
         @Override
         protected WebDriver initialValue() {
+
+            // creating folder's structure on host's machine
+            createFolders();
+
             switch (driverName) {
                 case "firefox":
                     // no need to download Firefox binary since we are using 
@@ -104,10 +118,8 @@ public class SeleniumDataFactory implements BrowserDriver {
                     ChromeOptions options = new ChromeOptions();
                     //options.addArguments("--kiosk"); // this option needs more testing
                     options.addArguments("--start-maximized");
-                    // trying to disable permission pop up messages:
-                    //http://peter.sh/experiments/chromium-command-line-switches/#always-authorize-plugins
-                    //options.addArguments("--use-fake-ui-for-media-stream");
-                    //options.addArguments("--always-authorize-plugins=true");
+                    // set custom download folder
+                    DesiredCapabilities cap = setDownloadFolderChrome(options);
 
                     // Since Fireshot API can be used on Windows only,
                     // checking user's OS and adding profile for Win users only
@@ -116,15 +128,14 @@ public class SeleniumDataFactory implements BrowserDriver {
                             // add Fireshot extension
                             options.addExtensions(stream2file(PropertiesManager.class.getClassLoader()
                                     .getResourceAsStream(CHROME_FIRESHOT_ADDON), driverName));
-                            // after adding extension - disable annoying pop up:
-                            // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> try AutoIt approach: http://stackoverflow.com/a/23204031
-                            return new ChromeDriver(options);
+
+                            return new ChromeDriver(cap);
                         } catch (IOException ex) {
                             log.info("There was a problem with adding Fireshot to Chrome: " + ex);
                         }
                     } else {
                         // on Mac, just run Crome with default options for full screen
-                        return new ChromeDriver(options);
+                        return new ChromeDriver(cap);
                     }
 
                 default:
@@ -151,6 +162,38 @@ public class SeleniumDataFactory implements BrowserDriver {
     public void removeDriver() {
         driver.get().quit();
         driver.remove();
+    }
+
+    /**
+     * Returns folderPaths, created during driver's initialization.
+     *
+     * @return
+     */
+    public Map<String, String> getFolderPaths() {
+        return folderPaths;
+    }
+
+    /**
+     * Creates folders, required for saving screenshots
+     */
+    private void createFolders() {
+        // creating parent folder for screenshots:
+        String screenshotsFolderPath = FolderManager.createScreensDir(
+                FolderManager.getUserDesktopDirPath(), "mDADI_Screens");
+
+        folderPaths.put("screenshotsFolderPath", screenshotsFolderPath);
+
+        // creating specific Program's screenshots folder
+        String programScreenshotsFolderPath = FolderManager.createScreensDir(screenshotsFolderPath,
+                programData.getCollectionId() + "_" + programData.getPresentationId());
+
+        folderPaths.put("programScreenshotsFolderPath", programScreenshotsFolderPath);
+
+        // Since Fireshot can save PDFs, creating specific Program's screenshots folder for PDFs
+        String programScreenshotsFolderPathPDF = FolderManager.createScreensDir(programScreenshotsFolderPath,
+                programData.getCollectionId() + "_" + programData.getPresentationId() + "_" + "pdf");
+
+        folderPaths.put("programScreenshotsFolderPathPDF", programScreenshotsFolderPathPDF);
     }
 
     /**
@@ -207,6 +250,26 @@ public class SeleniumDataFactory implements BrowserDriver {
         // quit webdriver and close browser
         tempDriver.quit();
         return ffVersion;
+    }
+
+    /**
+     * Set custom folder path for downloaded content in Chrome.
+     *
+     * @param options ChromeOptions
+     */
+    private DesiredCapabilities setDownloadFolderChrome(ChromeOptions options) {
+        HashMap<String, Object> chromePrefs = new HashMap<>();
+        chromePrefs.put("download.default_directory", folderPaths.get("programScreenshotsFolderPathPDF"));
+        options.setExperimentalOption("prefs", chromePrefs);
+        
+        DesiredCapabilities cap = DesiredCapabilities.chrome();
+        cap.setCapability(ChromeOptions.CAPABILITY, options);
+        
+        return cap;
+    }
+
+    private void setDownloadFolderFirefox() {
+
     }
 
     /**
