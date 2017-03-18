@@ -9,6 +9,9 @@ import com.mykolabs.screener.util.PropertiesManager;
 import com.mykolabs.screener.util.WebDriverUtil;
 import java.awt.AWTException;
 import java.awt.Robot;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.util.Properties;
@@ -105,7 +108,7 @@ public class ScreenshotTaker {
 
         // initializing folder Paths, created during Webdriver instantiation
         getFolderPaths(seleniumFactoryInstance);
-        
+
         // maximizing windows
         maximizeWindow(driver);
 
@@ -134,7 +137,7 @@ public class ScreenshotTaker {
                             injectFireshotAPIintoDOM(driver);
 
                             // take screenshot now
-                            takeSingleScreenshotWithFireshotChrome(driver, programScreenshotsFolderPath, pageId);
+                            takeSingleScreenshotWithFireshotChrome(programData, driver, programScreenshotsFolderPath, pageId);
 
                         } catch (IOException ex) {
                             log.info("There was a problem injecting Fireshot API: " + ex);
@@ -274,7 +277,7 @@ public class ScreenshotTaker {
      * @param folderPath
      * @param screenshotName
      */
-    private void takeSingleScreenshotWithFireshotChrome(WebDriver driver, String folderPath, String screenshotName) throws IOException {
+    private void takeSingleScreenshotWithFireshotChrome(ProgramData programData, WebDriver driver, String folderPath, String pageId) throws IOException {
 
         /*NEED NEW Instance of JS Executor*/
         JavascriptExecutor js = (JavascriptExecutor) driver;
@@ -286,6 +289,42 @@ public class ScreenshotTaker {
         // to make sure nothing happens while saving is happening in the browser
         WebDriverUtil.setTimeout(5000);
 
+        // since new tab has been opened - need to switch to this tab
+        // get a list of the currently open windows
+        Set<String> allTabs = driver.getWindowHandles();
+
+        // save the window handle for the current window
+        String programTab = driver.getWindowHandle();
+
+        // switching to the Save tab
+        String saveTab = ((String) allTabs.toArray()[1]);
+        driver.switchTo().window(saveTab);
+        WebDriverUtil.setTimeout(1000);
+
+        // Click Save PDF
+        driver.findElement(By.id("btnSaveImagePDF")).click();
+        WebDriverUtil.setTimeout(1000);
+
+        // Accept permission ONLY when making screenshot first time
+        if (programData.getProgramPagesIds().get(0).equals(pageId)) {
+            acceptFireshotPermissionOnApply();
+            WebDriverUtil.setTimeout(1000);
+        }
+
+        // copy screenshot name to the clipBoard
+        copyToClipBoard(pageId);
+        WebDriverUtil.setTimeout(1500);
+
+        // insert from clipboard
+        hitControlV();
+        WebDriverUtil.setTimeout(1000);
+
+        // hit Enter
+        hitEnter();
+        WebDriverUtil.setTimeout(1000);
+
+        // switch back to the program tab
+        driver.switchTo().window(programTab);
     }
 
     /**
@@ -479,6 +518,17 @@ public class ScreenshotTaker {
         driver.get(FIRESHOT_CHROME_EXT_PATH);
         // set small timout
         WebDriverUtil.setTimeout(2000);
+
+        // check 'Close tab after saving' checkbox
+        WebElement closeCheckbox = driver.findElement(By.id("chkCloseTab"));
+        if (!closeCheckbox.isSelected()) {
+            closeCheckbox.click();
+        }
+        WebDriverUtil.setTimeout(1000);
+
+        // remove FireShot path
+        driver.findElement(By.id("edtDefaultFolder")).clear();
+
         // check Fireshot API checkbox
         WebElement apiCheckbox = driver.findElement(By.id("chkAPI"));
         if (!apiCheckbox.isSelected()) {
@@ -603,6 +653,42 @@ public class ScreenshotTaker {
     }
 
     /**
+     * Hit Enter button.
+     */
+    private void hitEnter() {
+        Robot robot;
+        try {
+            robot = new Robot();
+            robot.keyPress(KeyEvent.VK_ENTER);
+            robot.delay(100);
+            robot.keyRelease(KeyEvent.VK_ENTER);
+            robot.delay(100);
+        } catch (AWTException e) {
+            log.error("Failed to press buttons: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Hit Enter button.
+     */
+    private void hitControlV() {
+        Robot robot;
+        try {
+            robot = new Robot();
+            robot.keyPress(KeyEvent.VK_CONTROL);
+            robot.delay(100);
+            robot.keyPress(KeyEvent.VK_V);
+            robot.delay(100);
+            robot.keyRelease(KeyEvent.VK_V);
+            robot.delay(100);
+            robot.keyRelease(KeyEvent.VK_CONTROL);
+            robot.delay(100);
+        } catch (AWTException e) {
+            log.error("Failed to press buttons: " + e.getMessage());
+        }
+    }
+
+    /**
      * Used to load Chrome NEW window. This will also close annoying 'Disable
      * Developer Extensions popup' popup.
      */
@@ -647,15 +733,21 @@ public class ScreenshotTaker {
         }
     }
 
+    private void copyToClipBoard(String stringToCopy) {
+        StringSelection stringSelection = new StringSelection(stringToCopy);
+        Clipboard clipBoard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        clipBoard.setContents(stringSelection, null);
+    }
+
     /**
      * Initializes folder paths fields.
      *
      * @param seleniumFactoryInstance
      */
     private void getFolderPaths(SeleniumDataFactory seleniumFactoryInstance) {
-    screenshotsFolderPath = seleniumFactoryInstance.getFolderPaths().get("screenshotsFolderPath");
-    programScreenshotsFolderPath = seleniumFactoryInstance.getFolderPaths().get("programScreenshotsFolderPath");
-    programScreenshotsFolderPathPDF = seleniumFactoryInstance.getFolderPaths().get("programScreenshotsFolderPathPDF");
-}
+        screenshotsFolderPath = seleniumFactoryInstance.getFolderPaths().get("screenshotsFolderPath");
+        programScreenshotsFolderPath = seleniumFactoryInstance.getFolderPaths().get("programScreenshotsFolderPath");
+        programScreenshotsFolderPathPDF = seleniumFactoryInstance.getFolderPaths().get("programScreenshotsFolderPathPDF");
+    }
 
 }
