@@ -40,6 +40,7 @@ import org.openqa.selenium.Keys;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.firefox.FirefoxDriver;
 import ru.yandex.qatools.ashot.coordinates.WebDriverCoordsProvider;
 
 import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
@@ -112,7 +113,7 @@ public class ScreenshotTaker {
         // maximizing windows
         maximizeWindow(driver);
 
-        // Enabling Fireshot's API - ONLY in Crome at the moment
+        // Enabling Fireshot's API
         if (driver instanceof ChromeDriver) {
             if (option.equals("Fireshot")) {
                 // enabling FireShot API in Chrome
@@ -124,7 +125,7 @@ public class ScreenshotTaker {
         programData.getProgramPagesIds().forEach((String pageId)
                 -> {
 
-            log.info("Loading URL: " + this.createPageUrl(pageId));
+            log.info("URL to load for screenshoting: " + this.createPageUrl(pageId));
 
             // Taking screenshots depending from the selected by user option and browser
             if (driver instanceof ChromeDriver) {
@@ -137,7 +138,7 @@ public class ScreenshotTaker {
                             injectFireshotAPIintoDOM(driver);
 
                             // take screenshot now
-                            takeSingleScreenshotWithFireshotChrome(programData, driver, programScreenshotsFolderPath, pageId);
+                            takeSingleScreenshotWithFireshotChrome(driver, programScreenshotsFolderPath, pageId);
 
                         } catch (IOException ex) {
                             log.info("There was a problem injecting Fireshot API: " + ex);
@@ -153,14 +154,17 @@ public class ScreenshotTaker {
             } else {
                 switch (option) {
                     case "Fireshot":
+                        // making sure only one tab left open
+                        closeTabsExceptFirst(driver);
+
                         loadSiteInBrowser(driver, pageId);
-                         {
+
                             try {
                                 takeSingleScreenshotWithFireshotFirefox(driver, programScreenshotsFolderPath, pageId);
                             } catch (IOException ex) {
                                 log.info("There was a problem with launching Fireshot: " + ex);
                             }
-                        }
+
                         break;
                     case "Native":
                         //takeSingleScreenshotWithFirefoxDevTools(driver, programScreenshotsFolderPath, pageId);
@@ -277,7 +281,7 @@ public class ScreenshotTaker {
      * @param folderPath
      * @param screenshotName
      */
-    private void takeSingleScreenshotWithFireshotChrome(ProgramData programData, WebDriver driver, String folderPath, String pageId) throws IOException {
+    private void takeSingleScreenshotWithFireshotChrome(WebDriver driver, String folderPath, String pageId) throws IOException {
 
         /*NEED NEW Instance of JS Executor*/
         JavascriptExecutor js = (JavascriptExecutor) driver;
@@ -334,7 +338,7 @@ public class ScreenshotTaker {
      * @param folderPath
      * @param screenshotName
      */
-    private void takeSingleScreenshotWithFireshotFirefox(WebDriver driver, String folderPath, String screenshotName) throws IOException {
+    private void takeSingleScreenshotWithFireshotFirefox(WebDriver driver, String folderPath, String pageId) throws IOException {
         // IMPORTANT - for now, FireShot API is enabled by default, no need to enable it
         // like in Chrome
 
@@ -346,6 +350,47 @@ public class ScreenshotTaker {
         JavascriptExecutor js = (JavascriptExecutor) driver;
         // preparing script
         js.executeScript(FIRESHOT_API_SAVE);
+
+        // Saving takes couple of seconds, we need to set timeout
+        // to make sure nothing happens while saving is happening in the browser
+        WebDriverUtil.setTimeout(5000);
+
+        // since new tab has been opened - need to switch to this tab
+        // get a list of the currently open windows
+        Set<String> allTabs = driver.getWindowHandles();
+
+        // save the window handle for the current window
+        String programTab = driver.getWindowHandle();
+
+        // switching to the Save tab
+        String saveTab = ((String) allTabs.toArray()[1]);
+        driver.switchTo().window(saveTab);
+        WebDriverUtil.setTimeout(1000);
+
+        // Click Save PDF
+        driver.findElement(By.id("btnSaveImagePDF")).click();
+        WebDriverUtil.setTimeout(1000);
+
+        // Accept permission ONLY when making screenshot first time
+        if (programData.getProgramPagesIds().get(0).equals(pageId)) {
+            acceptFireshotPermissionOnApply();
+            WebDriverUtil.setTimeout(1000);
+        }
+
+        // copy screenshot name to the clipBoard
+        copyToClipBoard(pageId);
+        WebDriverUtil.setTimeout(1500);
+
+        // insert from clipboard
+        hitControlV();
+        WebDriverUtil.setTimeout(1000);
+
+        // hit Enter
+        hitEnter();
+        WebDriverUtil.setTimeout(1000);
+
+        // switch back to the program tab
+        driver.switchTo().window(programTab);
 
     }
 
@@ -600,12 +645,22 @@ public class ScreenshotTaker {
      *
      * @param tabs
      */
-    private void closeTabsExceptFirst(ArrayList<String> tabs, WebDriver driver) {
+    private void closeTabsExceptFirst(WebDriver driver) {
+        WebDriverUtil.setTimeout(1000);
+        log.info("Closing all tabs except first one ");
+        // get a list of the currently open windows
+        ArrayList<String> tabs = new ArrayList<>(driver.getWindowHandles());
+
         tabs.forEach(tab -> {
             if (!tabs.get(0).equals(tab)) {
                 driver.switchTo().window(tab).close();
             }
         });
+        WebDriverUtil.setTimeout(500);
+        ArrayList<String> tabsThatStillOpened = new ArrayList<>(driver.getWindowHandles());
+        driver.switchTo().window(tabsThatStillOpened.get(0));
+        WebDriverUtil.setTimeout(500);
+        log.info("Tab left open: " + tabs.get(0));
     }
 
     /**

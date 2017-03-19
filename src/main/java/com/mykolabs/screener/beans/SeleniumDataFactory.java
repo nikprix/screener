@@ -97,12 +97,15 @@ public class SeleniumDataFactory implements BrowserDriver {
                     // no need to download Firefox binary since we are using 
                     // Maven dependency: https://github.com/bonigarcia/webdrivermanager
                     // full topic here: http://stackoverflow.com/questions/7450416/selenium-2-chrome-driver
-                    FirefoxDriverManager.getInstance().setup();
+                    FirefoxDriverManager.getInstance().setup("0.14.0");
 
                     // Since Fireshot API can be used on Windows only,
                     // checking user's OS and adding profile for Win users only
                     if (WebDriverUtil.OSDetector().equals("Windows")) {
-                        return new FirefoxDriver(createFFprofileWithAddon());
+
+                        // get curernt Firefox version
+                        String currentFFVersion = getCurrentFirefoxVersion();
+                        return new FirefoxDriver(createFFprofileWithAddon(currentFFVersion));
                     } else {
                         return new FirefoxDriver();
                     }
@@ -204,20 +207,21 @@ public class SeleniumDataFactory implements BrowserDriver {
      *
      * @return
      */
-    private FirefoxProfile createFFprofileWithAddon() {
+    private FirefoxProfile createFFprofileWithAddon(String currentFFVersion) {
         // Create new browser profile
         FirefoxProfile firefoxprofile = new FirefoxProfile();
 
         try {
             // add extension to profile
             firefoxprofile.addExtension(stream2file(PropertiesManager.class.getClassLoader().getResourceAsStream(FIREFOX_FIRESHOT_ADDON), driverName));
+            log.info("Firefox extension was added");
         } catch (IOException ex) {
             log.info("There was a problem with adding Fireshot to Firefox: " + ex);
         }
 
         // this Preference fixes addon compatibility issues in FF
-        firefoxprofile.setPreference("extensions.checkCompatibility." + getCurrentFirefoxVersion() + ".0", false);
-
+        firefoxprofile.setPreference("extensions.checkCompatibility." + currentFFVersion + ".0", false);
+        log.info("Set 'extensions.checkCompatibility." + currentFFVersion + ".0" + " to 'false'");
         return firefoxprofile;
     }
 
@@ -227,8 +231,12 @@ public class SeleniumDataFactory implements BrowserDriver {
      * @return current version of user's Firefox browser
      */
     private static String getCurrentFirefoxVersion() {
+        log.info("Getting Firefox version by separate FF instanse");
+
         WebDriver tempDriver = new FirefoxDriver();
         WebDriverUtil.setTimeout(1000);
+        log.info("Loaded Temporary Firefox window");
+
         Capabilities caps = ((RemoteWebDriver) tempDriver).getCapabilities();
 
         log.info("Browser name: " + caps.getBrowserName());
@@ -249,6 +257,8 @@ public class SeleniumDataFactory implements BrowserDriver {
         log.info("Firefox version extracted using Webdriver: " + ffVersion);
         // quit webdriver and close browser
         tempDriver.quit();
+        // set little timout
+        WebDriverUtil.setTimeout(500);
         return ffVersion;
     }
 
@@ -261,10 +271,10 @@ public class SeleniumDataFactory implements BrowserDriver {
         HashMap<String, Object> chromePrefs = new HashMap<>();
         chromePrefs.put("download.default_directory", folderPaths.get("programScreenshotsFolderPathPDF"));
         options.setExperimentalOption("prefs", chromePrefs);
-        
+
         DesiredCapabilities cap = DesiredCapabilities.chrome();
         cap.setCapability(ChromeOptions.CAPABILITY, options);
-        
+
         return cap;
     }
 
@@ -294,6 +304,7 @@ public class SeleniumDataFactory implements BrowserDriver {
         try (FileOutputStream out = new FileOutputStream(tempFile)) {
             IOUtils.copy(in, out);
         }
+        log.info("Temp file, which contains Fireshot extension for Firefox is: " + tempFile.getName());
         return tempFile;
     }
 }
